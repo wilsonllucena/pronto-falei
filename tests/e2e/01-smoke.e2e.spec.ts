@@ -14,7 +14,7 @@ test.describe.configure({ mode: 'serial' })
 test('home mostra o wordmark', async ({ page }) => {
   await page.goto('/')
   await expect(page).toHaveTitle(/Pronto, Falei!/)
-  await expect(page.locator('h1.wordmark')).toContainText('Pronto, Falei!')
+  await expect(page.locator('header .wordmark')).toContainText('Pronto, Falei!')
   if (shotsDir) await page.screenshot({ path: `${shotsDir}/01-home.png`, fullPage: true })
 })
 

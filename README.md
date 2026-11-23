@@ -3,9 +3,9 @@
 Blog pessoal do Wilson Lima: ideias, opiniões e descobertas sobre tecnologia,
 inovação e inteligência artificial, sem rodeios.
 
-> **Status:** passos 1 (esqueleto), 2 (collections e admin) e 3 (MinIO)
-> prontos. Ainda não tem design do site, IA nem deploy — isso vem nos
-> próximos passos.
+> **Status:** passos 1 (esqueleto), 2 (collections e admin), 3 (MinIO) e 4
+> (design e layout) prontos. Ainda não tem página do post, IA nem deploy —
+> isso vem nos próximos passos.
 
 ## Stack
 
@@ -75,14 +75,40 @@ docker compose up -d --wait mongo minio
 docker compose run --rm minio-init
 ```
 
+## Design e layout (passo 4)
+
+- **Tokens** em `src/design/tokens.ts` (papel, tinta, muted, laranja, grifo,
+  borda), nos temas claro e escuro. O layout injeta as variáveis CSS no
+  `<head>`, então a paleta muda num lugar só. Um teste confere contraste AA
+  (4.5:1) de todo par de texto.
+- **Fontes** servidas pelo próprio site (`next/font/local` + Fontsource):
+  Bricolage Grotesque (títulos e wordmark), Newsreader (texto), Inter
+  (interface) e JetBrains Mono (código e datas). Nenhuma chamada ao Google.
+- **Tema** segue o sistema; o botão salva a escolha no cookie `pf-theme`, e um
+  script inline no `<head>` aplica antes da primeira pintura (sem piscar).
+- **Wordmark** só em texto: "Pronto," em tinta e "Falei!" em laranja com grifo
+  amarelo. Favicon: balão de fala com "!" (`src/app/(frontend)/icon.svg`).
+- **Header** fixo e compacto (menu do global Navigation, ou Blog/Arquivo/Sobre
+  por padrão, busca e tema; no mobile o menu recolhe). **Footer** com tags
+  populares, links e redes do Site Settings.
+- **Home**: hero com tagline e RSS, até 3 destaques (`featured`) em cards
+  (carrossel no mobile) e recentes agrupados por mês, com alternância
+  Lista/Grade lembrada no navegador. **/blog**: todos os textos paginados.
+- Pular para o conteúdo, foco visível, alvos de toque de 44px e
+  `prefers-reduced-motion`.
+
+Os links de post, tag, arquivo, sobre, busca e feed já apontam pras rotas
+finais, que chegam nos passos 5 a 7.
+
 ### Seed (só dev)
 
 ```bash
 pnpm seed
 ```
 
-Cria categorias (Opinião, Tutorial, Diário), tags, a página Sobre (rascunho) e
-um post de exemplo. É idempotente e **recusa rodar** com `NODE_ENV=production`
+Cria categorias (Opinião, Tutorial, Diário), tags, a página Sobre (rascunho),
+capas abstratas geradas com sharp e sete posts de exemplo em meses diferentes
+(três em destaque). É idempotente e **recusa rodar** com `NODE_ENV=production`
 ou contra um banco que não seja local (`127.0.0.1`, `localhost` ou `mongo`).
 
 ## Rodando local
@@ -173,7 +199,6 @@ roda o Playwright. Os prints do smoke ficam como artefato do workflow.
 
 ## Próximos passos (resumo do plano)
 
-4. Design system e layout (claro/escuro)
 5. Página do post · 6. Navegação · 7. Leitura por IA (`.md`, `llms.txt`, JSON-LD, feeds)
 8. IA local da síntese (llama.cpp, só texto) · 9. Séries e relacionados
 10. Docker de produção e deploy no homelab · 11–13. Umami, Remark42, Listmonk

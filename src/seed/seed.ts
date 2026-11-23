@@ -1,6 +1,8 @@
 import type { Payload } from 'payload'
 
 import { lexicalFromBlocks } from '../lib/lexicalBuilder'
+import { COVERS, renderCover } from './covers'
+import { SAMPLE_POSTS } from './samplePosts'
 
 /**
  * Seed SÓ de desenvolvimento. Recusa rodar em produção ou contra um banco
@@ -87,7 +89,8 @@ export async function seed(payload: Payload): Promise<{ created: string[] }> {
       _status: 'published',
       category: categories.opiniao,
       tags: tags.slice(0, 2),
-      featured: true,
+      featured: false,
+      publishedAt: '2026-08-30T12:00:00.000Z',
       content: lexicalFromBlocks([
         { heading: 'Por que um blog' },
         'Este é um post de exemplo criado pelo seed de desenvolvimento. Ele existe só pra ter conteúdo no admin e no site enquanto o blog é construído.',
@@ -103,6 +106,50 @@ export async function seed(payload: Payload): Promise<{ created: string[] }> {
       summarySource: 'manual',
     }),
   )
+
+  // Capas de exemplo (idempotente pelo texto alternativo).
+  const covers: Record<string, string> = {}
+  for (const spec of COVERS) {
+    const existing = await payload.find({
+      collection: 'media',
+      where: { alt: { equals: spec.alt } },
+      limit: 1,
+      depth: 0,
+    })
+    if (existing.docs[0]) {
+      covers[spec.key] = String(existing.docs[0].id)
+      continue
+    }
+    const data = await renderCover(spec)
+    const media = await payload.create({
+      collection: 'media',
+      data: { alt: spec.alt, credit: 'Ilustração gerada pelo seed' },
+      file: { data, mimetype: 'image/png', name: `capa-${spec.key}.png`, size: data.length },
+    })
+    covers[spec.key] = String(media.id)
+    created.push(`capa ${spec.key}`)
+  }
+
+  const tagIds: Record<string, string> = { ia: tags[0], homelab: tags[1], carreira: tags[2] }
+  for (const sample of SAMPLE_POSTS) {
+    track(
+      `post ${sample.slug}`,
+      await upsertBySlug(payload, 'posts', sample.slug, {
+        title: sample.title,
+        subtitle: sample.subtitle,
+        _status: 'published',
+        publishedAt: sample.publishedAt,
+        category: categories[sample.category],
+        tags: sample.tags.map((t) => tagIds[t]),
+        featured: Boolean(sample.featured),
+        cover: sample.cover ? covers[sample.cover] : undefined,
+        content: lexicalFromBlocks(sample.paragraphs),
+        summary: sample.summary,
+        keyPoints: sample.keyPoints.map((text) => ({ text })),
+        summarySource: 'manual',
+      }),
+    )
+  }
 
   return { created }
 }
