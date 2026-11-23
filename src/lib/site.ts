@@ -38,7 +38,7 @@ export const DEFAULT_HEADER_NAV: NavLink[] = [
 
 export const DEFAULT_FOOTER_NAV: NavLink[] = [
   { label: 'Sobre o Wilson', url: '/sobre', newTab: false },
-  { label: 'RSS', url: '/feed.xml', newTab: false },
+  { label: 'RSS', url: '/rss.xml', newTab: false },
   { label: 'llms.txt', url: '/llms.txt', newTab: false },
 ]
 

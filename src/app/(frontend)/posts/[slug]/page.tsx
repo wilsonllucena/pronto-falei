@@ -11,9 +11,16 @@ import { PostHeader } from '@/components/post/PostHeader'
 import { QuickSummary } from '@/components/post/QuickSummary'
 import { Related } from '@/components/post/Related'
 import { TocMobile, TocSide } from '@/components/post/Toc'
+import { blogPostingJsonLd, jsonLdString, postMdPath } from '@/lib/machine'
 import { redirectOrNotFound } from '@/lib/notFound'
 import { absoluteUrl, withHeadingAnchors } from '@/lib/post'
-import { getDraftPost, getPublishedPost, getRelatedPosts } from '@/lib/queries'
+import {
+  getDraftPost,
+  getPublishedPost,
+  getRelatedPosts,
+  getSiteInfo,
+  toMachinePost,
+} from '@/lib/queries'
 import { seoDescription } from '@/lib/seo'
 import { toPostCard } from '@/lib/site'
 import type { Media, Post } from '@/payload-types'
@@ -52,7 +59,11 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   return {
     title: meta.title || post.title,
     description: meta.description || seoDescription(post),
-    alternates: { canonical: url },
+    alternates: {
+      canonical: url,
+      // versão pra máquinas (passo 7)
+      types: { 'text/markdown': absoluteUrl(postMdPath(post.slug)) },
+    },
     robots: preview ? { index: false, follow: false } : undefined,
     openGraph: {
       type: 'article',
@@ -81,10 +92,15 @@ export default async function PostPage({ params, searchParams }: Props) {
   const card = toPostCard(post)
   const coverMedia = typeof post.cover === 'object' ? (post.cover as Media | null) : null
   const { content, toc } = withHeadingAnchors(post.content)
-  const related = preview ? [] : await getRelatedPosts(post.slug)
+  const [related, site] = await Promise.all([
+    preview ? Promise.resolve([]) : getRelatedPosts(post.slug),
+    getSiteInfo(),
+  ])
+  const jsonLd = preview ? null : jsonLdString(blogPostingJsonLd(toMachinePost(post), site))
 
   return (
     <article className="post" data-preview={preview || undefined}>
+      {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />}
       {preview && (
         <div className="preview-bar" role="status">
           <span>Pré-visualização do rascunho. Só você está vendo.</span>

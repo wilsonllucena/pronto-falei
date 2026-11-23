@@ -77,7 +77,7 @@ jobs:
       - name: Smoke test — subir a stack com a imagem de produção
         run: docker compose up -d --build --wait
 
-      - name: Smoke test — Playwright (site, post, preview, busca, páginas, /api/health, admin, mídia)
+      - name: Smoke test — Playwright (site, post, preview, busca, páginas, leitura por IA, /api/health, admin, mídia)
         run: |
           pnpm exec playwright install --with-deps chromium
           mkdir -p smoke-shots

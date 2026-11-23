@@ -57,7 +57,7 @@ export function FindMe({ author }: { author: AuthorInfo }) {
       external: true,
     })),
     ...(author.email ? [{ label: 'E-mail', href: `mailto:${author.email}`, external: false }] : []),
-    { label: 'RSS', href: '/feed.xml', external: false },
+    { label: 'RSS', href: '/rss.xml', external: false },
   ]
   return (
     <section className="find-me" aria-labelledby="onde-me-achar">

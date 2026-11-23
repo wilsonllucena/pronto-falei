@@ -151,7 +151,7 @@ test('sobre: autor, texto da página e onde me achar', async ({ page }) => {
   await expect(page.locator('.prose')).toContainText('Texto provisório')
   await expect(page.locator('.find-me__link', { hasText: 'RSS' })).toHaveAttribute(
     'href',
-    '/feed.xml',
+    '/rss.xml',
   )
   await expect(page).toHaveTitle('Sobre · Pronto, Falei!')
 })

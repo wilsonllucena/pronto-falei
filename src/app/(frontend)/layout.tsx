@@ -34,6 +34,21 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {/* Tema salvo aplicado antes da primeira pintura (sem piscar). */}
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <style dangerouslySetInnerHTML={{ __html: themeCss() }} />
+        {/* Feeds e índice pra IA (passo 7) */}
+        <link rel="alternate" type="application/rss+xml" title={chrome.siteName} href="/rss.xml" />
+        <link
+          rel="alternate"
+          type="application/atom+xml"
+          title={chrome.siteName}
+          href="/atom.xml"
+        />
+        <link
+          rel="alternate"
+          type="application/feed+json"
+          title={chrome.siteName}
+          href="/feed.json"
+        />
+        <link rel="alternate" type="text/plain" title="llms.txt" href="/llms.txt" />
       </head>
       <body>
         <a href="#conteudo" className="skip-link">

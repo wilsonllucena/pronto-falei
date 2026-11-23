@@ -6,7 +6,8 @@ import { cache } from 'react'
 import type { Post } from '../payload-types'
 import { cached } from './cache'
 import { CACHE_TAGS } from './cacheTags'
-import { pickRelated } from './post'
+import type { MachinePage, MachinePost, SiteInfo, SitemapEntry } from './machine'
+import { pickRelated, siteUrl } from './post'
 import { normalizePath, redirectTarget, type RedirectDoc } from './redirects'
 import {
   accentInsensitivePattern,
@@ -22,9 +23,11 @@ import { SEARCH_SLUG } from '../plugins/search'
 import {
   DEFAULT_FOOTER_NAV,
   DEFAULT_HEADER_NAV,
+  categoryHref,
   navOrFallback,
   postHref,
   rankTags,
+  tagHref,
   toPostCard,
   type NavLink,
   type PostCard,
@@ -579,3 +582,166 @@ export async function searchPosts(
     totalPages: Math.max(1, Math.ceil(total / SEARCH_PAGE_SIZE)),
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Passo 7: síntese pra máquinas (.md, llms.txt, feeds, sitemap)        */
+/* ------------------------------------------------------------------ */
+
+const CHROME_NETWORKS_WITHOUT_URL = new Set(['email'])
+
+/** Dados do site pros robôs: nome, URL base, autor e política de IA. */
+export const getSiteInfo = cached(
+  async (): Promise<SiteInfo> => {
+    const payload = await payloadClient()
+    const s = await payload.findGlobal({ slug: 'site-settings', depth: 0 })
+    const url = siteUrl()
+    return {
+      name: s.siteName || 'Pronto, Falei!',
+      tagline: s.tagline || 'Ideias, opiniões e descobertas, sem rodeios.',
+      url,
+      author: {
+        name: s.author?.name || 'Wilson Lima',
+        url: `${url}/sobre`,
+        sameAs: (s.social ?? [])
+          .filter((x) => !CHROME_NETWORKS_WITHOUT_URL.has(x.network) && /^https?:\/\//.test(x.url))
+          .map((x) => x.url),
+      },
+      llmsIntro: s.llmsTxtIntro || null,
+      aiRobots: s.aiRobots === 'block' ? 'block' : 'allow',
+    }
+  },
+  'site-info',
+  () => [CACHE_TAGS.site],
+)
+
+/** Post do Payload (depth ≥ 1) → formato dos robôs. */
+export function toMachinePost(post: Post): MachinePost {
+  const card = toPostCard(post)
+  const media = post.cover && typeof post.cover === 'object' ? post.cover : null
+  const og = media?.sizes?.og?.url
+    ? media.sizes.og
+    : media?.sizes?.hero?.url
+      ? media.sizes.hero
+      : null
+  const coverUrl = og?.url ?? media?.url ?? null
+  return {
+    slug: post.slug,
+    title: post.title,
+    subtitle: post.subtitle ?? null,
+    summary: post.summary ?? '',
+    keyPoints: (post.keyPoints ?? []).map((k) => k.text).filter(Boolean),
+    publishedAt: card.publishedAt,
+    updatedAt: post.updatedAt,
+    tags: card.tags,
+    category: card.category,
+    readingTime: post.readingTime ?? null,
+    wordCount: post.wordCount ?? null,
+    content: post.content,
+    cover: coverUrl
+      ? {
+          url: coverUrl,
+          width: og?.width ?? media?.width ?? 1200,
+          height: og?.height ?? media?.height ?? 630,
+          alt: media?.alt ?? '',
+        }
+      : null,
+  }
+}
+
+/** Posts publicados pros robôs (do mais novo pro mais antigo); limit null = todos. */
+export const getMachinePosts = cached(
+  async (limit: number | null): Promise<MachinePost[]> => {
+    const payload = await payloadClient()
+    const res = await payload.find({
+      collection: 'posts',
+      where: published,
+      sort: '-publishedAt',
+      depth: 2,
+      ...(limit ? { limit } : { pagination: false }),
+    })
+    return res.docs.map((d) => toMachinePost(d as Post))
+  },
+  'machine-posts',
+  () => [CACHE_TAGS.feeds, CACHE_TAGS.posts],
+)
+
+export const getMachinePost = async (slug: string): Promise<MachinePost | null> => {
+  const post = await getPublishedPost(slug)
+  return post ? toMachinePost(post) : null
+}
+
+/** Páginas publicadas (Sobre e afins) pros robôs. */
+export const getMachinePages = cached(
+  async (): Promise<MachinePage[]> => {
+    const payload = await payloadClient()
+    const res = await payload.find({
+      collection: 'pages',
+      where: published,
+      sort: 'title',
+      depth: 2,
+      pagination: false,
+    })
+    return res.docs.map((p) => ({
+      slug: p.slug,
+      title: p.title,
+      description: p.meta?.description || null,
+      updatedAt: p.updatedAt,
+      content: p.content,
+    }))
+  },
+  'machine-pages',
+  () => [CACHE_TAGS.pages, CACHE_TAGS.feeds],
+)
+
+/** URLs públicas com a data real da última mudança. */
+export const getSitemapEntries = cached(
+  async (): Promise<SitemapEntry[]> => {
+    const payload = await payloadClient()
+    const [posts, pages, tags, cats] = await Promise.all([
+      payload.find({
+        collection: 'posts',
+        where: published,
+        sort: '-publishedAt',
+        depth: 1,
+        pagination: false,
+        select: { slug: true, updatedAt: true, tags: true, category: true },
+      }),
+      payload.find({
+        collection: 'pages',
+        where: published,
+        depth: 0,
+        pagination: false,
+        select: { slug: true, updatedAt: true },
+      }),
+      getAllTags(),
+      getAllCategories(),
+    ])
+    const newest = (dates: string[]) =>
+      dates.reduce<string | null>((m, d) => (!m || d > m ? d : m), null)
+    const all = posts.docs.map((p) => p.updatedAt)
+    const latest = newest(all)
+    const byTag = new Map<string, string[]>()
+    const byCat = new Map<string, string[]>()
+    for (const p of posts.docs) {
+      for (const t of p.tags ?? [])
+        if (typeof t === 'object') byTag.set(t.slug, [...(byTag.get(t.slug) ?? []), p.updatedAt])
+      if (p.category && typeof p.category === 'object')
+        byCat.set(p.category.slug, [...(byCat.get(p.category.slug) ?? []), p.updatedAt])
+    }
+    return [
+      { path: '/', lastmod: latest },
+      { path: '/blog', lastmod: latest },
+      { path: '/arquivo', lastmod: latest },
+      { path: '/tags', lastmod: latest },
+      { path: '/categorias', lastmod: latest },
+      ...pages.docs.map((p) => ({ path: `/${p.slug}`, lastmod: p.updatedAt })),
+      ...posts.docs.map((p) => ({ path: postHref(p.slug), lastmod: p.updatedAt })),
+      ...tags.map((t) => ({ path: tagHref(t.slug), lastmod: newest(byTag.get(t.slug) ?? []) })),
+      ...cats
+        .filter((c) => c.count > 0)
+        .map((c) => ({ path: categoryHref(c.slug), lastmod: newest(byCat.get(c.slug) ?? []) })),
+    ]
+  },
+  'sitemap',
+  () => [CACHE_TAGS.feeds, CACHE_TAGS.posts, CACHE_TAGS.pages],
+)

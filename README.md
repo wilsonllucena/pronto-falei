@@ -4,9 +4,9 @@ Blog pessoal do Wilson Lima: ideias, opiniões e descobertas sobre tecnologia,
 inovação e inteligência artificial, sem rodeios.
 
 > **Status:** passos 1 (esqueleto), 2 (collections e admin), 3 (MinIO), 4
-> (design e layout), 5 (página do post) e 6 (navegação e páginas) prontos. Ainda não tem leitura por
-> IA (.md, llms.txt, feeds), síntese automática nem deploy — isso vem nos
-> próximos passos.
+> (design e layout), 5 (página do post), 6 (navegação e páginas) e 7 (leitura
+> por IA: .md, llms.txt, JSON-LD, feeds) prontos. Ainda não tem síntese
+> automática nem deploy — isso vem nos próximos passos.
 
 ## Stack
 
@@ -151,6 +151,26 @@ finais, que chegam nos passos 6 e 7.
   permanente, 307 para temporário, que buscadores tratam como 301/302).
 - **404** com busca, atalhos e tags populares.
 
+## Leitura por IA (passo 7)
+
+Tudo sai dos posts publicados, com cache por tag: publicar, despublicar ou
+editar um post (ou o Sobre, ou as Configurações) invalida na hora.
+
+| URL | O que entrega |
+|---|---|
+| `/posts/<slug>.md` | `text/markdown`: frontmatter (title, url, published, updated, tags, reading_time, word_count, summary, key_points) + corpo convertido do Lexical. Link "Ler em Markdown" no Resumo rápido |
+| `/<página>.md` | Páginas publicadas (ex.: `/sobre.md`) |
+| `/llms.txt` | Índice no padrão llmstxt.org: um link pro `.md` de cada post com o TL;DR. A introdução vem de *Configurações › llms.txt* |
+| `/llms-full.txt` | Todos os posts publicados em Markdown num arquivo só |
+| `/rss.xml`, `/atom.xml`, `/feed.json` | RSS 2.0 / Atom / JSON Feed 1.1: description = síntese, `content:encoded` = texto completo (30 mais recentes). `/feed.xml` redireciona pro RSS |
+| `/sitemap.xml` | Páginas, posts, tags e categorias com `lastmod` real |
+| `/robots.txt` | Robôs de IA (GPTBot, ClaudeBot, PerplexityBot, Google-Extended…) liberados ou bloqueados conforme *Configurações › Robôs de IA*; `/admin`, `/api/` e preview fora |
+
+No HTML: JSON-LD `BlogPosting` em cada post (headline, abstract, description,
+keywords, wordCount, timeRequired, inLanguage pt-BR, autor, datas, imagem) e
+`WebSite` com a busca na home; `<link rel="alternate">` pro `.md` do post e
+pros três feeds em todas as páginas. Meta description e OG saem da síntese.
+
 ### Seed (só dev)
 
 ```bash
@@ -251,7 +271,6 @@ roda o Playwright. Os prints do smoke ficam como artefato do workflow.
 
 ## Próximos passos (resumo do plano)
 
-7. Leitura por IA (`.md`, `llms.txt`, JSON-LD, feeds)
 8. IA local da síntese (llama.cpp, só texto) · 9. Séries e relacionados
 10. Docker de produção e deploy no homelab · 11–13. Umami, Remark42, Listmonk
 14. Publicação (domínio), com aprovação

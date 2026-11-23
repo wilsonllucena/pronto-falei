@@ -64,7 +64,7 @@ test('home: header, hero, destaques, recentes por mês e footer', async ({ page 
   await expect(page.locator('h1.hero__title')).toHaveText(
     'Ideias, opiniões e descobertas, sem rodeios.',
   )
-  await expect(page.getByRole('link', { name: 'RSS' }).first()).toHaveAttribute('href', '/feed.xml')
+  await expect(page.getByRole('link', { name: 'RSS' }).first()).toHaveAttribute('href', '/rss.xml')
 
   const featured = page.locator('.featured .card')
   await expect(featured).toHaveCount(3)
