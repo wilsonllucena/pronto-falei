@@ -92,7 +92,12 @@ test('cria e publica uma página', async ({ page }) => {
   await page.fill('#field-title', `Sobre ${run}`)
   await typeInEditor(page, 'Página de teste do passo 2. A bio de verdade entra depois.')
   await shot(page, 'p2-05-pagina-preenchida')
-  await page.click('#action-save')
+  await expect(async () => {
+    await page.click('#action-save')
+    await expect(page.getByText('Publicado', { exact: true }).first()).toBeVisible({
+      timeout: 5_000,
+    })
+  }).toPass({ timeout: 45_000 })
   await expectSaved(page, 'pages')
   await expect(page.locator('#field-slug')).toHaveValue(`sobre-${run}`)
   await shot(page, 'p2-06-pagina-publicada')
@@ -110,11 +115,13 @@ test('cria e publica um post com síntese, tag e categoria', async ({ page }) =>
   await pickRelationship(page, 'field-tags', `Inteligência Artificial ${run}`)
   await shot(page, 'p2-07-post-conteudo')
 
-  // Publicar sem síntese é recusado.
-  await page.click('#action-save')
-  await expect(
-    page.locator('.tabs-field__tab-button--has-error', { hasText: 'Síntese' }),
-  ).toBeVisible()
+  // Publicar sem síntese é recusado. (Repete o clique se cair durante um autosave.)
+  await expect(async () => {
+    await page.click('#action-save')
+    await expect(
+      page.locator('.tabs-field__tab-button--has-error', { hasText: 'Síntese' }),
+    ).toBeVisible({ timeout: 4_000 })
+  }).toPass({ timeout: 45_000 })
   await shot(page, 'p2-08-post-erro-sem-sintese')
 
   await page
@@ -140,9 +147,11 @@ test('cria e publica um post com síntese, tag e categoria', async ({ page }) =>
   }
   await shot(page, 'p2-09-post-sintese')
 
-  await page.click('#action-save')
+  await expect(async () => {
+    await page.click('#action-save')
+    await expect(page.locator('#field-readingTime')).toHaveValue('1', { timeout: 5_000 })
+  }).toPass({ timeout: 45_000 })
   await expectSaved(page, 'posts')
-  await expect(page.locator('#field-readingTime')).toHaveValue('1', { timeout: 15_000 })
   await expect(page.locator('#field-slug')).toHaveValue(`meu-primeiro-post-${run}`)
   // Recarrega: confere que ficou salvo e limpa os avisos da tentativa anterior.
   await page.reload()
