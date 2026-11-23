@@ -1,6 +1,7 @@
 import type { Field, GlobalConfig } from 'payload'
 
 import { anyone, authenticated } from '../access'
+import { revalidateSiteAfterChange } from '../lib/revalidate'
 
 const navItems = (name: string, label: string): Field => ({
   name,
@@ -28,6 +29,7 @@ const navItems = (name: string, label: string): Field => ({
 
 export const Navigation: GlobalConfig = {
   slug: 'navigation',
+  hooks: { afterChange: [revalidateSiteAfterChange] },
   label: 'Navegação',
   access: { read: anyone, update: authenticated },
   admin: { group: 'Configurações' },

@@ -1,4 +1,6 @@
 /** Posts de exemplo do seed de desenvolvimento (nunca rodar em produção). */
+import type { Block } from '../lib/lexicalBuilder'
+
 type Sample = {
   slug: string
   title: string
@@ -8,12 +10,13 @@ type Sample = {
   tags: ('ia' | 'homelab' | 'carreira')[]
   featured?: boolean
   cover?: string
-  paragraphs: (string | { heading: string })[]
+  /** Imagens no corpo usam `cover:<chave>` e o seed troca pelo id da mídia. */
+  paragraphs: Block[]
   summary: string
   keyPoints: string[]
 }
 
-const filler = (topic: string) => [
+const filler = (topic: string): Block[] => [
   `Faz um tempo que eu queria escrever sobre ${topic}. Não é um tutorial definitivo, é o que funcionou pra mim até aqui, com os tropeços incluídos.`,
   { heading: 'O contexto' },
   'Antes de qualquer ferramenta, vale entender o problema. Eu tinha pouco tempo, pouco hardware e muita vontade de fazer do jeito certo, sem complicar.',
@@ -21,6 +24,79 @@ const filler = (topic: string) => [
   { heading: 'O que eu aprendi' },
   'A solução mais simples quase sempre ganha. Quando precisei de algo mais sofisticado, a base simples deixou a troca barata.',
   'Se for pra levar uma coisa deste texto, leve essa: comece pequeno, meça e só então otimize.',
+]
+
+/** Post de vitrine: usa todos os elementos do editor (títulos, listas, código, blocos, imagem). */
+const SHOWCASE: Block[] = [
+  {
+    paragraph: [
+      'Quando decidi gerar a síntese dos posts com IA, a regra era clara: ',
+      { text: 'nada sai do homelab', bold: true },
+      '. Nada de API paga, nada de mandar rascunho pra fora. O desafio era caber num mini PC sem GPU.',
+    ],
+  },
+  { heading: 'Por que um modelo pequeno' },
+  'Resumir texto é uma tarefa bem mais simples do que conversar sobre qualquer assunto. Um modelo de 4B parâmetros, quantizado, dá conta e ainda sobra memória pro resto do servidor.',
+  {
+    list: [
+      [{ text: 'Qwen3-4B-Instruct', bold: true }, ' em Q3_K_M: 2,1 GB em disco'],
+      ['Só texto: nada de visão ou áudio, que pesam e eu não uso'],
+      ['Licença Apache 2.0, sem pegadinha'],
+    ],
+  },
+  { heading: 'Os números do teste', tag: 'h3' },
+  'Com 4 threads, um post de 929 palavras levou 46 segundos do começo ao fim, com pico de 2,7 GB de RAM. Pra um job que roda em segundo plano, é mais que suficiente.',
+  {
+    callout:
+      'Limite a CPU e a memória do container. Assim, mesmo no pico, a IA não derruba os outros apps do servidor.',
+    tone: 'dica',
+    title: 'Dica de homelab',
+  },
+  { heading: 'Subindo o servidor' },
+  {
+    paragraph: [
+      'O ',
+      { text: 'llama.cpp', code: true },
+      ' tem um servidor HTTP compatível com a API da OpenAI. Basta apontar pro arquivo do modelo:',
+    ],
+  },
+  {
+    code: [
+      'llama-server \\',
+      '  --model /models/qwen3-4b-instruct-2507-q3_k_m.gguf \\',
+      '  --ctx-size 8192 \\',
+      '  --threads 3 \\',
+      '  --host 0.0.0.0 --port 8080',
+    ].join('\n'),
+    language: 'bash',
+  },
+  'No compose, o serviço fica só na rede interna, sem porta no host:',
+  {
+    code: 'services:\n  llm:\n    image: ghcr.io/ggml-org/llama.cpp:server\n    networks: [internal]   # sem porta no host\n    deploy:\n      resources:\n        limits: { cpus: "3", memory: 3g }',
+    language: 'yaml',
+    title: 'docker-compose.yml',
+  },
+  { heading: 'Chamando do app', tag: 'h3' },
+  {
+    code: "const res = await fetch('http://llm:8080/v1/chat/completions', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ messages, temperature: 0.2, max_tokens: 450 }),\n})\nconst { choices } = await res.json()",
+    language: 'typescript',
+    title: 'src/ai/summary.ts',
+  },
+  { image: 'cover:ondas', caption: 'A fila processa um post por vez, sem travar o servidor.' },
+  { heading: 'O que eu aprendi' },
+  {
+    quote:
+      'A solução mais simples quase sempre ganha. Quando precisei de algo mais sofisticado, a base simples deixou a troca barata.',
+    author: 'Eu mesmo, depois de três tentativas',
+  },
+  {
+    paragraph: [
+      'Se quiser se aprofundar, a ',
+      { text: 'documentação do llama.cpp', href: 'https://github.com/ggml-org/llama.cpp' },
+      ' é o melhor ponto de partida.',
+    ],
+  },
+  { embed: 'https://x.com/ggml_org', caption: 'O perfil do projeto no X.' },
 ]
 
 export const SAMPLE_POSTS: Sample[] = [
@@ -33,7 +109,7 @@ export const SAMPLE_POSTS: Sample[] = [
     tags: ['ia', 'homelab'],
     featured: true,
     cover: 'grade',
-    paragraphs: filler('rodar IA local num mini PC'),
+    paragraphs: SHOWCASE,
     summary:
       'Rodei um modelo de linguagem de 4B parâmetros só em CPU, num mini PC do homelab, pra gerar sínteses de texto. Ficou leve, privado e rápido o bastante pro uso de um blog, sem GPU e sem mandar nada pra fora.',
     keyPoints: [

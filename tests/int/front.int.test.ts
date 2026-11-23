@@ -6,9 +6,13 @@ import {
   BLOG_PAGE_SIZE,
   FEATURED_MAX,
   getBlogPage,
+  getDraftPost,
   getHomeData,
+  getPublishedPost,
+  getRelatedPosts,
   getSiteChrome,
 } from '@/lib/queries'
+import { setRevalidator } from '@/lib/revalidate'
 import { seed } from '@/seed/seed'
 
 let payload: Payload
@@ -67,5 +71,54 @@ describe('dados do front (home, blog, header e footer)', () => {
     expect(slugs).toEqual(expect.arrayContaining(['ia', 'homelab', 'carreira']))
     const counts = chrome.popularTags.map((t) => t.count)
     expect([...counts].sort((a, b) => b - a)).toEqual(counts)
+  })
+
+  it('post: publicado com corpo rico, imagem populada e relacionados por tag', async () => {
+    const post = await getPublishedPost('ia-local-no-homelab-sem-gpu')
+    expect(post?.title).toBe('IA local no homelab, sem GPU e sem drama')
+    const nodes = (post?.content as { root: { children: Record<string, unknown>[] } }).root.children
+    const types = nodes.map((n) =>
+      n.type === 'block' ? (n.fields as { blockType: string }).blockType : n.type,
+    )
+    expect(types).toEqual(
+      expect.arrayContaining(['heading', 'list', 'code', 'callout', 'quote', 'embed', 'upload']),
+    )
+    const upload = nodes.find((n) => n.type === 'upload') as { value: { url?: string } }
+    expect(typeof upload.value).toBe('object')
+    expect(upload.value.url).toBeTruthy()
+
+    const related = await getRelatedPosts('ia-local-no-homelab-sem-gpu')
+    expect(related.length).toBeGreaterThan(0)
+    expect(related.length).toBeLessThanOrEqual(3)
+    expect(related.map((p) => p.slug)).not.toContain('ia-local-no-homelab-sem-gpu')
+    for (const r of related) {
+      expect(r.tags.some((t) => ['ia', 'homelab'].includes(t.slug))).toBe(true)
+    }
+    expect(await getPublishedPost('nao-existe')).toBeNull()
+  })
+
+  it('rascunho só aparece na pré-visualização (pelo slug ou pelo id)', async () => {
+    expect(await getPublishedPost(`rascunho-do-front-${run}`)).toBeNull()
+    const bySlug = await getDraftPost(`rascunho-do-front-${run}`)
+    expect(bySlug?.title).toBe(`Rascunho do front ${run}`)
+    const byId = await getDraftPost(draftId!)
+    expect(byId?.id).toBe(draftId)
+    expect(await getDraftPost('nada')).toBeNull()
+  })
+
+  it('salvar um post dispara o revalidateTag das listas e do post', async () => {
+    const calls: string[] = []
+    setRevalidator((t) => calls.push(t))
+    try {
+      await payload.update({
+        collection: 'posts',
+        id: draftId!,
+        draft: true,
+        data: { subtitle: `editado ${run}` } as never,
+      })
+    } finally {
+      setRevalidator(null)
+    }
+    expect(calls).toEqual(['posts', 'feeds', `post:rascunho-do-front-${run}`])
   })
 })

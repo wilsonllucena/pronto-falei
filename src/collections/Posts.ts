@@ -5,6 +5,8 @@ import { contentEditor } from '../fields/editor'
 import { seoTab } from '../fields/seo'
 import { slug } from '../fields/slug'
 import { computeReadingStats, setPublishedAt } from '../hooks/postStats'
+import { siteUrl } from '../lib/post'
+import { revalidatePostAfterChange, revalidatePostAfterDelete } from '../lib/revalidate'
 import {
   KEY_POINT_MAX,
   KEY_POINTS_MAX,
@@ -14,6 +16,22 @@ import {
   SUMMARY_SOURCES,
   validateSummaryReviewed,
 } from '../lib/summary'
+
+/** Origem pública da requisição (respeita proxy); cai no NEXT_PUBLIC_SERVER_URL. */
+export function requestOrigin(headers: Headers | undefined): string {
+  const host = headers?.get('x-forwarded-host') || headers?.get('host')
+  if (host && /^[\w.:[\]-]+$/.test(host)) {
+    const proto = headers?.get('x-forwarded-proto')?.split(',')[0]?.trim() || 'http'
+    return `${proto === 'https' ? 'https' : 'http'}://${host}`
+  }
+  return siteUrl()
+}
+
+/** URL de pré-visualização: o slug (ou o id, antes do primeiro slug) com ?preview=1. */
+export function previewPath(doc: Record<string, unknown> | null | undefined): string {
+  const key = (doc?.slug as string | undefined) || (doc?.id as string | undefined) || ''
+  return `/posts/${encodeURIComponent(key)}?preview=1`
+}
 
 export const Posts: CollectionConfig = {
   slug: 'posts',
@@ -29,6 +47,17 @@ export const Posts: CollectionConfig = {
     useAsTitle: 'title',
     defaultColumns: ['title', 'category', '_status', 'publishedAt', 'updatedAt'],
     listSearchableFields: ['title', 'subtitle', 'summary'],
+    // Pré-visualização do rascunho no site (só pra quem está logado), na mesma
+    // origem em que o admin foi aberto (LAN, Tailscale ou domínio).
+    preview: (doc, { req }) => requestOrigin(req.headers) + previewPath(doc),
+    livePreview: {
+      url: ({ data, req }) => requestOrigin(req.headers) + previewPath(data),
+      breakpoints: [
+        { label: 'Celular', name: 'mobile', width: 390, height: 844 },
+        { label: 'Tablet', name: 'tablet', width: 820, height: 1180 },
+        { label: 'Desktop', name: 'desktop', width: 1440, height: 900 },
+      ],
+    },
   },
   defaultSort: '-publishedAt',
   versions: {
@@ -40,6 +69,8 @@ export const Posts: CollectionConfig = {
   },
   hooks: {
     beforeChange: [computeReadingStats, setPublishedAt],
+    afterChange: [revalidatePostAfterChange],
+    afterDelete: [revalidatePostAfterDelete],
   },
   fields: [
     { name: 'title', label: 'Título', type: 'text', required: true },

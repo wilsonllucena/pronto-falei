@@ -1,5 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
+import { revalidateListsAfterChange, revalidateListsAfterDelete } from '../lib/revalidate'
+
 import { anyone, authenticated } from '../access'
 
 /** Tamanhos gerados em WebP a cada upload (plano: thumb 400, card 800, hero 1600, og 1200×630). */
@@ -18,6 +20,10 @@ export const WEBP_QUALITY = 80
  */
 export const Media: CollectionConfig = {
   slug: 'media',
+  hooks: {
+    afterChange: [revalidateListsAfterChange],
+    afterDelete: [revalidateListsAfterDelete],
+  },
   labels: { singular: 'Mídia', plural: 'Mídias' },
   access: { read: anyone, create: authenticated, update: authenticated, delete: authenticated },
   admin: {

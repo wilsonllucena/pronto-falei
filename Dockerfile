@@ -29,6 +29,8 @@ COPY --from=builder /app/public ./public
 RUN mkdir .next media && chown nextjs:nodejs .next media
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# Fontes da OG image (next/og lê do disco em runtime)
+COPY --from=builder --chown=nextjs:nodejs /app/src/assets/og ./src/assets/og
 USER nextjs
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=5 \

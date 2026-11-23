@@ -3,9 +3,10 @@
 Blog pessoal do Wilson Lima: ideias, opiniões e descobertas sobre tecnologia,
 inovação e inteligência artificial, sem rodeios.
 
-> **Status:** passos 1 (esqueleto), 2 (collections e admin), 3 (MinIO) e 4
-> (design e layout) prontos. Ainda não tem página do post, IA nem deploy —
-> isso vem nos próximos passos.
+> **Status:** passos 1 (esqueleto), 2 (collections e admin), 3 (MinIO), 4
+> (design e layout) e 5 (página do post) prontos. Ainda não tem leitura por
+> IA (.md, llms.txt, feeds), síntese automática nem deploy — isso vem nos
+> próximos passos.
 
 ## Stack
 
@@ -97,8 +98,33 @@ docker compose run --rm minio-init
 - Pular para o conteúdo, foco visível, alvos de toque de 44px e
   `prefers-reduced-motion`.
 
-Os links de post, tag, arquivo, sobre, busca e feed já apontam pras rotas
-finais, que chegam nos passos 5 a 7.
+Os links de tag, arquivo, sobre, busca, feed e `.md` já apontam pras rotas
+finais, que chegam nos passos 6 e 7.
+
+## Página do post (passo 5)
+
+- `/posts/[slug]`: cabeçalho (categoria, título, linha fina, data, tempo de
+  leitura, tags e capa com legenda), **Resumo rápido** (TL;DR, pontos-chave,
+  "Ler em Markdown" e "Resumir com IA" no Grok, ChatGPT ou Claude), aberto por
+  padrão e lembrando se você fechou.
+- Corpo do Lexical renderizado no servidor: títulos com âncora, listas, links,
+  imagem com legenda e crédito, e os blocos Código (Shiki com github-light e
+  github-dark, título do arquivo e botão Copiar), Destaque, Citação e Embed
+  (YouTube sem cookies; X vira um cartão com link, sem JS de terceiros).
+- Índice "Nesta página" fixo ao lado no desktop (marca a seção atual) e
+  "Índice ▾" recolhido no mobile.
+- **Leia também**: o override manual do post ou até 3 posts com mais tags em
+  comum.
+- **OG image** automática (`next/og`, 1200×630) com título, linha fina, data e
+  wordmark; se o post tiver imagem de SEO, ela vence.
+- **Pré-visualização e live preview**: no admin, o botão Pré-visualização abre
+  o post com `?preview=1` ao lado do editor e atualiza a cada autosave. O
+  rascunho só aparece pra quem está logado no admin; para o resto é o
+  publicado.
+- **ISR sob demanda**: home, `/blog`, post, relacionados e header/footer vêm
+  de um cache com tags. Os hooks `afterChange`/`afterDelete` de posts, tags,
+  categorias, mídias e globals chamam `revalidateTag`, então publicar aparece
+  na hora; sem invalidação, o cache expira em 1 h.
 
 ### Seed (só dev)
 

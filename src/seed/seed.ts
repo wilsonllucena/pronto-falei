@@ -143,7 +143,13 @@ export async function seed(payload: Payload): Promise<{ created: string[] }> {
         tags: sample.tags.map((t) => tagIds[t]),
         featured: Boolean(sample.featured),
         cover: sample.cover ? covers[sample.cover] : undefined,
-        content: lexicalFromBlocks(sample.paragraphs),
+        content: lexicalFromBlocks(
+          sample.paragraphs.map((b) =>
+            typeof b === 'object' && 'image' in b && b.image.startsWith('cover:')
+              ? { ...b, image: covers[b.image.slice(6)] }
+              : b,
+          ),
+        ),
         summary: sample.summary,
         keyPoints: sample.keyPoints.map((text) => ({ text })),
         summarySource: 'manual',

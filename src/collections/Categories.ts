@@ -1,5 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
+import { revalidateListsAfterChange, revalidateListsAfterDelete } from '../lib/revalidate'
+
 import { anyone, authenticated } from '../access'
 import { slug } from '../fields/slug'
 
@@ -12,6 +14,10 @@ export const validateHexColor = (value: unknown): true | string => {
 
 export const Categories: CollectionConfig = {
   slug: 'categories',
+  hooks: {
+    afterChange: [revalidateListsAfterChange],
+    afterDelete: [revalidateListsAfterDelete],
+  },
   labels: { singular: 'Categoria', plural: 'Categorias' },
   access: { read: anyone, create: authenticated, update: authenticated, delete: authenticated },
   admin: {

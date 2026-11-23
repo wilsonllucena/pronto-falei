@@ -1,6 +1,7 @@
 import type { GlobalConfig } from 'payload'
 
 import { anyone, authenticated } from '../access'
+import { revalidateSiteAfterChange } from '../lib/revalidate'
 
 export const SOCIAL_NETWORKS = [
   'x',
@@ -15,6 +16,7 @@ export const SOCIAL_NETWORKS = [
 
 export const SiteSettings: GlobalConfig = {
   slug: 'site-settings',
+  hooks: { afterChange: [revalidateSiteAfterChange] },
   label: 'Configurações do site',
   access: { read: anyone, update: authenticated },
   admin: { group: 'Configurações' },
