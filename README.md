@@ -3,8 +3,8 @@
 Blog pessoal do Wilson Lima: ideias, opiniões e descobertas sobre tecnologia,
 inovação e inteligência artificial, sem rodeios.
 
-> **Status:** passo 1 do plano (esqueleto). Ainda não tem posts, design final
-> nem deploy — isso vem nos próximos passos.
+> **Status:** passos 1 (esqueleto) e 2 (collections e admin) prontos. Ainda
+> não tem design do site, MinIO, IA nem deploy — isso vem nos próximos passos.
 
 ## Stack
 
@@ -21,8 +21,45 @@ inovação e inteligência artificial, sem rodeios.
 | Storage | MinIO (fork `pgsty/silo:RELEASE.2026-11-12T00-00-00Z`) — o app passa a usar no passo 3 |
 | Testes | Vitest 4 (unit + integração) e Playwright (smoke) |
 
-Collections do esqueleto: **Users** (admin, com `name`) e **Media** (placeholder
-de upload de imagem com `alt` obrigatório). O admin está em pt-BR.
+## Conteúdo no admin (passo 2)
+
+O admin (`/admin`) está em pt-BR e agrupado em Conteúdo, Taxonomia, Admin e
+Configurações.
+
+| Collection / global | O que tem |
+| --- | --- |
+| **Posts** | título, slug único (sem acento), linha fina, capa, texto (Lexical), síntese (`summary`, 160–400 caracteres), `keyPoints` (3–5 itens de até 140), `summarySource` (manual / ia / ia-editada), `summaryReviewed`, `summaryModel`, `summaryGeneratedAt`, categoria, tags, destaque, `publishedAt`, `readingTime`, `wordCount`, relacionados (override manual) e SEO |
+| **Pages** | título, slug, texto e SEO (Sobre, Uses, Contato) |
+| **Media** | `alt` obrigatório, legenda, crédito e focal point (disco local até o passo 3) |
+| **Tags** | nome, slug, descrição |
+| **Categories** | nome, slug, descrição, cor (#RRGGBB) |
+| **Users** | e-mail, nome, avatar, bio. Sem cadastro público |
+| **Configurações do site** (global) | nome, tagline, redes sociais, texto do `llms.txt`, política de robôs de IA |
+| **Navegação** (global) | itens do header e do footer |
+
+Regras:
+
+- Posts e páginas têm rascunho com autosave, histórico de versões e (posts)
+  agendamento de publicação. Rascunho salva incompleto; **publicar** exige
+  síntese e 3 a 5 pontos-chave.
+- Se a síntese veio da IA (`ia` ou `ia-editada`), o post só publica com
+  "Síntese revisada" marcada.
+- `wordCount` e `readingTime` (220 palavras/min) são calculados num hook a
+  partir do Lexical; `publishedAt` é preenchido na primeira publicação.
+- Visitante só lê posts e páginas publicados; tags, categorias, mídias e
+  globals são públicos; usuários só pra quem está logado.
+- O editor tem os blocos Código (linguagem e título), Destaque, Embed
+  (YouTube/X), Citação e imagem com legenda. O render no site é do passo 5.
+
+### Seed (só dev)
+
+```bash
+pnpm seed
+```
+
+Cria categorias (Opinião, Tutorial, Diário), tags, a página Sobre (rascunho) e
+um post de exemplo. É idempotente e **recusa rodar** com `NODE_ENV=production`
+ou contra um banco que não seja local (`127.0.0.1`, `localhost` ou `mongo`).
 
 ## Rodando local
 
@@ -79,10 +116,12 @@ docker compose down -v     # apaga banco e arquivos de dev
 | `pnpm test:int` | Vitest contra o Mongo do compose (ping, replica set, transação, CRUD) |
 | `pnpm test` | unit + integração |
 | `pnpm test:e2e` | Smoke com Playwright contra o app rodando (`BASE_URL`, padrão `http://localhost:3130`) |
+| `pnpm seed` | Seed de desenvolvimento (bloqueado em produção) |
 | `pnpm generate:types` | Regenera `src/payload-types.ts` |
 | `pnpm generate:importmap` | Regenera o import map do admin |
 
-O smoke test cria o primeiro usuário (ou faz login) com `E2E_EMAIL` e
+O smoke test (`01-smoke`) cria o primeiro usuário (ou faz login) e o `02-conteudo`
+cria tag, categoria, página e post pelo admin, com `E2E_EMAIL` e
 `E2E_PASSWORD` do ambiente. **Use só com banco descartável de dev/CI.** Com
 `SHOTS_DIR=/algum/dir` ele salva prints das telas.
 
@@ -109,7 +148,6 @@ roda o Playwright. Os prints do smoke ficam como artefato do workflow.
 
 ## Próximos passos (resumo do plano)
 
-2. Collections e admin (Posts, Tags, Categories, Pages, globals, drafts)
 3. MinIO com `storage-s3` e tamanhos de imagem
 4. Design system e layout (claro/escuro)
 5. Página do post · 6. Navegação · 7. Leitura por IA (`.md`, `llms.txt`, JSON-LD, feeds)
