@@ -60,7 +60,7 @@ test('rascunho: só quem está logado vê, com ?preview=1', async ({ page, brows
   await page.goto(`/posts/${SLUG}?preview=1`)
   await expect(page.locator('h1')).toHaveText(draftTitle)
   await expect(page.locator('.preview-bar')).toContainText('Pré-visualização do rascunho')
-  await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/)
+  await expect(page.locator('meta[name="robots"]').first()).toHaveAttribute('content', /noindex/)
   if (shotsDir) await page.screenshot({ path: `${shotsDir}/p5-08-preview-rascunho.png` })
 
   // volta o rascunho pro título publicado

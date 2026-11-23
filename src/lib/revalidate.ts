@@ -31,7 +31,10 @@ export async function revalidateTags(tags: string[]): Promise<void> {
     // expire: 0 — a próxima visita já busca o dado novo.
     for (const tag of tags) revalidateTag(tag, { expire: 0 })
   } catch (err) {
-    console.warn('[cache] não deu pra invalidar', tags, err)
+    // Alguns fluxos do admin gravam durante o render de uma página, onde o Next
+    // não deixa invalidar. Aí vale a validade de segurança do cache (1h).
+    const msg = err instanceof Error ? err.message : String(err)
+    console.warn('[cache] não deu pra invalidar', tags.join(', '), '—', msg.split('\n')[0])
   }
 }
 
