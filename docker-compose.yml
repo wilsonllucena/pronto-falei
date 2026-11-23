@@ -1,0 +1,71 @@
+# Compose de DESENVOLVIMENTO (passo 1). O compose de produção do Umbrel
+# (auth no Mongo com keyfile, backup, llm, umami etc.) chega no passo 10.
+#
+#   cp .env.example .env   # e preencha os valores (veja o README)
+#   docker compose up -d --build
+#
+name: pronto-falei-dev
+
+services:
+  app:
+    build: .
+    image: pronto-falei-app:dev
+    ports: ['127.0.0.1:${APP_PORT:-3130}:3000']
+    environment:
+      NEXT_PUBLIC_SERVER_URL: ${NEXT_PUBLIC_SERVER_URL:-http://localhost:3130}
+      PAYLOAD_SECRET: ${PAYLOAD_SECRET:?defina PAYLOAD_SECRET no .env}
+      DATABASE_URI: mongodb://mongo:27017/pronto_falei?replicaSet=rs0
+      TZ: ${TZ:-America/Sao_Paulo}
+    depends_on:
+      mongo: { condition: service_healthy }
+      minio: { condition: service_healthy }
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3000/api/health']
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    deploy: { resources: { limits: { memory: 768m, cpus: '1.5' } } }
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:8.0.38
+    # Replica set de um nó (rs0): o Payload precisa dele pra usar transações.
+    command: ['--replSet', 'rs0', '--bind_ip_all', '--wiredTigerCacheSizeGB', '0.25']
+    ports: ['127.0.0.1:${MONGO_PORT:-27017}:27017'] # só pra pnpm dev/testes no host
+    volumes: [mongo-data:/data/db]
+    healthcheck:
+      # Inicia o replica set na primeira subida e só fica saudável quando é primário.
+      test:
+        - CMD
+        - mongosh
+        - --quiet
+        - --eval
+        - "try { rs.status() } catch (e) { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'mongo:27017' }] }) }; if (!db.hello().isWritablePrimary) quit(1)"
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 10s
+    deploy: { resources: { limits: { memory: 768m } } }
+    restart: unless-stopped
+
+  minio:
+    # Fork mantido do MinIO (o mesmo do RifaJá). O app passa a usar no passo 3.
+    image: pgsty/silo:RELEASE.2026-11-12T00-00-00Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?defina MINIO_ROOT_USER no .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?defina MINIO_ROOT_PASSWORD no .env}
+    ports: ['127.0.0.1:${MINIO_API_PORT:-3131}:9000', '127.0.0.1:${MINIO_CONSOLE_PORT:-3132}:9001']
+    volumes: [minio-data:/data]
+    healthcheck:
+      test: ['CMD', 'curl', '-fs', 'http://127.0.0.1:9000/minio/health/live']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    deploy: { resources: { limits: { memory: 512m } } }
+    restart: unless-stopped
+
+volumes:
+  mongo-data: {}
+  minio-data: {}

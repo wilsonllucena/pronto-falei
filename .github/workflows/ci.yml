@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: lint, typecheck, testes, build e smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.22.3
+          cache: pnpm
+
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile
+
+      - name: Gerar .env descartável (valores aleatórios, só pro CI)
+        run: |
+          {
+            echo "NEXT_PUBLIC_SERVER_URL=http://localhost:3130"
+            echo "PAYLOAD_SECRET=$(openssl rand -hex 32)"
+            echo "DATABASE_URI=mongodb://127.0.0.1:27017/pronto_falei?replicaSet=rs0&directConnection=true"
+            echo "MINIO_ROOT_USER=ci$(openssl rand -hex 4)"
+            echo "MINIO_ROOT_PASSWORD=$(openssl rand -hex 16)"
+            echo "TZ=America/Sao_Paulo"
+          } > .env
+          echo "E2E_EMAIL=ci@pronto-falei.local" >> "$GITHUB_ENV"
+          pw="$(openssl rand -hex 16)"
+          echo "::add-mask::$pw"
+          echo "E2E_PASSWORD=$pw" >> "$GITHUB_ENV"
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Testes unitários
+        run: pnpm test:unit
+
+      - name: Build
+        run: pnpm build
+
+      - name: Subir Mongo (replica set) e MinIO
+        run: docker compose up -d --wait mongo minio
+
+      - name: Testes de integração (Payload + Mongo)
+        run: pnpm test:int
+
+      - name: Smoke test — subir a stack com a imagem de produção
+        run: docker compose up -d --build --wait
+
+      - name: Smoke test — Playwright (home, /api/health, admin)
+        run: |
+          pnpm exec playwright install --with-deps chromium
+          mkdir -p smoke-shots
+          SHOTS_DIR="$PWD/smoke-shots" pnpm test:e2e
+
+      - name: Logs dos containers
+        if: failure()
+        run: docker compose logs --no-color --tail=200
+
+      - name: Prints do smoke test
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: smoke-shots
+          path: |
+            smoke-shots/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Derrubar a stack
+        if: always()
+        run: docker compose down -v
