@@ -1,5 +1,6 @@
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import { seoPlugin } from '@payloadcms/plugin-seo'
+import { s3Storage } from '@payloadcms/storage-s3'
 import { pt } from '@payloadcms/translations/languages/pt'
 import path from 'path'
 import { buildConfig } from 'payload'
@@ -17,11 +18,14 @@ import { contentEditor } from './fields/editor'
 import { Navigation } from './globals/Navigation'
 import { SiteSettings } from './globals/SiteSettings'
 import { seoDescription, seoTitle } from './lib/seo'
+import { buildPublicFileURL, getStorageSettings, MEDIA_PREFIX } from './lib/storage'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
 const isBuild = process.env.NEXT_PHASE === 'phase-production-build'
+const storage = getStorageSettings()
+const mediaPublicUrl = storage.publicUrl
 
 export default buildConfig({
   serverURL: process.env.NEXT_PUBLIC_SERVER_URL || '',
@@ -62,6 +66,33 @@ export default buildConfig({
   sharp,
   telemetry: false,
   plugins: [
+    // Imagens no MinIO (Silo). Com MEDIA_PUBLIC_URL, a URL aponta direto pro
+    // bucket público (subdomínio de imagens com cache do Cloudflare no passo 14).
+    s3Storage({
+      enabled: storage.enabled,
+      bucket: storage.bucket,
+      collections: {
+        media: {
+          prefix: MEDIA_PREFIX,
+          ...(mediaPublicUrl
+            ? {
+                disablePayloadAccessControl: true as const,
+                generateFileURL: ({ filename, prefix }) =>
+                  buildPublicFileURL(mediaPublicUrl, prefix, filename),
+              }
+            : {}),
+        },
+      },
+      config: {
+        endpoint: storage.endpoint,
+        region: storage.region,
+        forcePathStyle: storage.forcePathStyle,
+        credentials: {
+          accessKeyId: storage.accessKeyId,
+          secretAccessKey: storage.secretAccessKey,
+        },
+      },
+    }),
     seoPlugin({
       generateTitle: ({ doc }) => seoTitle(doc as { title?: string }),
       generateDescription: ({ doc }) =>

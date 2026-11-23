@@ -15,10 +15,18 @@ services:
       NEXT_PUBLIC_SERVER_URL: ${NEXT_PUBLIC_SERVER_URL:-http://localhost:3130}
       PAYLOAD_SECRET: ${PAYLOAD_SECRET:?defina PAYLOAD_SECRET no .env}
       DATABASE_URI: mongodb://mongo:27017/pronto_falei?replicaSet=rs0
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: ${S3_BUCKET:-pronto-falei-media}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_FORCE_PATH_STYLE: 'true'
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?defina S3_ACCESS_KEY_ID no .env}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?defina S3_SECRET_ACCESS_KEY no .env}
+      MEDIA_PUBLIC_URL: ${MEDIA_PUBLIC_URL:-http://localhost:3131/pronto-falei-media}
       TZ: ${TZ:-America/Sao_Paulo}
     depends_on:
       mongo: { condition: service_healthy }
       minio: { condition: service_healthy }
+      minio-init: { condition: service_completed_successfully }
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3000/api/health']
       interval: 15s
@@ -50,7 +58,7 @@ services:
     restart: unless-stopped
 
   minio:
-    # Fork mantido do MinIO (o mesmo do RifaJá). O app passa a usar no passo 3.
+    # Fork mantido do MinIO (o mesmo do RifaJá). Guarda as imagens do blog.
     image: pgsty/silo:RELEASE.2026-11-12T00-00-00Z
     command: server /data --console-address ":9001"
     environment:
@@ -65,6 +73,21 @@ services:
       retries: 10
     deploy: { resources: { limits: { memory: 512m } } }
     restart: unless-stopped
+
+  minio-init:
+    # Roda uma vez: bucket, leitura pública só em media/ e usuário restrito do app.
+    image: pgsty/silo:RELEASE.2026-11-12T00-00-00Z # traz o cliente mcli
+    depends_on:
+      minio: { condition: service_healthy }
+    entrypoint: ['/bin/sh', '/init/minio-init.sh']
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?defina MINIO_ROOT_USER no .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?defina MINIO_ROOT_PASSWORD no .env}
+      S3_BUCKET: ${S3_BUCKET:-pronto-falei-media}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?defina S3_ACCESS_KEY_ID no .env}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?defina S3_SECRET_ACCESS_KEY no .env}
+    volumes: ['./minio/init:/init:ro']
+    restart: 'no'
 
 volumes:
   mongo-data: {}

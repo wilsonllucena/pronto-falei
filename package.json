@@ -21,10 +21,12 @@
     "seed": "cross-env NODE_OPTIONS=--no-deprecation PAYLOAD_JOBS_AUTORUN=false payload run src/seed/run.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "3.1176.0",
     "@payloadcms/db-mongodb": "3.94.1",
     "@payloadcms/next": "3.94.1",
     "@payloadcms/plugin-seo": "3.94.1",
     "@payloadcms/richtext-lexical": "3.94.1",
+    "@payloadcms/storage-s3": "3.94.1",
     "@payloadcms/translations": "3.94.1",
     "@payloadcms/ui": "3.94.1",
     "cross-env": "^7.0.3",

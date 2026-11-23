@@ -3,8 +3,9 @@
 Blog pessoal do Wilson Lima: ideias, opiniões e descobertas sobre tecnologia,
 inovação e inteligência artificial, sem rodeios.
 
-> **Status:** passos 1 (esqueleto) e 2 (collections e admin) prontos. Ainda
-> não tem design do site, MinIO, IA nem deploy — isso vem nos próximos passos.
+> **Status:** passos 1 (esqueleto), 2 (collections e admin) e 3 (MinIO)
+> prontos. Ainda não tem design do site, IA nem deploy — isso vem nos
+> próximos passos.
 
 ## Stack
 
@@ -18,7 +19,7 @@ inovação e inteligência artificial, sem rodeios.
 | TypeScript | 5.9.3 |
 | Banco | MongoDB 8.0.38, replica set de um nó (`rs0`) via `@payloadcms/db-mongodb` |
 | Editor | Lexical (`@payloadcms/richtext-lexical`) |
-| Storage | MinIO (fork `pgsty/silo:RELEASE.2026-11-12T00-00-00Z`) — o app passa a usar no passo 3 |
+| Storage | MinIO (fork `pgsty/silo:RELEASE.2026-11-12T00-00-00Z`) via `@payloadcms/storage-s3` |
 | Testes | Vitest 4 (unit + integração) e Playwright (smoke) |
 
 ## Conteúdo no admin (passo 2)
@@ -30,7 +31,7 @@ Configurações.
 | --- | --- |
 | **Posts** | título, slug único (sem acento), linha fina, capa, texto (Lexical), síntese (`summary`, 160–400 caracteres), `keyPoints` (3–5 itens de até 140), `summarySource` (manual / ia / ia-editada), `summaryReviewed`, `summaryModel`, `summaryGeneratedAt`, categoria, tags, destaque, `publishedAt`, `readingTime`, `wordCount`, relacionados (override manual) e SEO |
 | **Pages** | título, slug, texto e SEO (Sobre, Uses, Contato) |
-| **Media** | `alt` obrigatório, legenda, crédito e focal point (disco local até o passo 3) |
+| **Media** | `alt` obrigatório, legenda, crédito e focal point; arquivos no MinIO com tamanhos em WebP |
 | **Tags** | nome, slug, descrição |
 | **Categories** | nome, slug, descrição, cor (#RRGGBB) |
 | **Users** | e-mail, nome, avatar, bio. Sem cadastro público |
@@ -51,6 +52,29 @@ Regras:
 - O editor tem os blocos Código (linguagem e título), Destaque, Embed
   (YouTube/X), Citação e imagem com legenda. O render no site é do passo 5.
 
+## Imagens no MinIO (passo 3)
+
+- Uploads da collection Media vão pro bucket `pronto-falei-media`, pasta
+  `media/`, pelo `@payloadcms/storage-s3` (path-style).
+- Cada upload gera, em WebP (qualidade 80): `thumb` 400, `card` 800, `hero`
+  1600 (sem ampliar imagens menores) e `og` 1200×630 (recorte pelo focal point).
+- O serviço `minio-init` (`minio/init/minio-init.sh`) roda uma vez e é
+  idempotente: cria o bucket, deixa **só** `media/` com leitura anônima e cria
+  o usuário do app com uma política restrita a esse bucket (ler, gravar,
+  apagar e listar). O usuário root do MinIO não é usado pelo app.
+- Com `MEDIA_PUBLIC_URL`, a URL das imagens aponta direto pro bucket público
+  (em dev, `http://localhost:3131/pronto-falei-media`; em produção, o
+  subdomínio de imagens com cache do Cloudflare, no passo 14).
+- `GET /api/health` só responde 200 se o Mongo responde e o bucket existe
+  (checado com as credenciais do app).
+
+Pra rodar o `pnpm dev`/testes no host, suba o MinIO e rode o init uma vez:
+
+```bash
+docker compose up -d --wait mongo minio
+docker compose run --rm minio-init
+```
+
 ### Seed (só dev)
 
 ```bash
@@ -67,7 +91,8 @@ Pré-requisitos: Node 24.22.3+, pnpm 10 e Docker com Compose v2.
 
 ```bash
 cp .env.example .env
-# preencha PAYLOAD_SECRET, MINIO_ROOT_USER e MINIO_ROOT_PASSWORD
+# preencha PAYLOAD_SECRET, MINIO_ROOT_USER, MINIO_ROOT_PASSWORD,
+# S3_ACCESS_KEY_ID e S3_SECRET_ACCESS_KEY
 # (gere segredos com: openssl rand -hex 32)
 
 pnpm install
@@ -90,6 +115,7 @@ Todas as portas ficam presas em `127.0.0.1`.
 
 ```bash
 docker compose up -d --wait mongo minio
+docker compose run --rm minio-init
 pnpm dev   # http://localhost:3000
 ```
 
@@ -113,7 +139,7 @@ docker compose down -v     # apaga banco e arquivos de dev
 | `pnpm lint` | ESLint (config do Next) |
 | `pnpm typecheck` | `tsc --noEmit` |
 | `pnpm test:unit` | Vitest, sem dependências externas |
-| `pnpm test:int` | Vitest contra o Mongo do compose (ping, replica set, transação, CRUD) |
+| `pnpm test:int` | Vitest contra o Mongo e o MinIO do compose (replica set, collections, uploads e tamanhos) |
 | `pnpm test` | unit + integração |
 | `pnpm test:e2e` | Smoke com Playwright contra o app rodando (`BASE_URL`, padrão `http://localhost:3130`) |
 | `pnpm seed` | Seed de desenvolvimento (bloqueado em produção) |
@@ -127,9 +153,8 @@ cria tag, categoria, página e post pelo admin, com `E2E_EMAIL` e
 
 ## Health check
 
-`GET /api/health` responde `200 {"status":"ok","checks":{"mongo":"ok"}}` quando o
-Mongo responde ao ping, e `503` caso contrário. O check do bucket do MinIO entra
-no passo 3.
+`GET /api/health` responde `200 {"status":"ok","checks":{"mongo":"ok","bucket":"ok"}}`
+quando o Mongo responde ao ping e o bucket do MinIO existe, e `503` caso contrário.
 
 ## CI
 
@@ -148,7 +173,6 @@ roda o Playwright. Os prints do smoke ficam como artefato do workflow.
 
 ## Próximos passos (resumo do plano)
 
-3. MinIO com `storage-s3` e tamanhos de imagem
 4. Design system e layout (claro/escuro)
 5. Página do post · 6. Navegação · 7. Leitura por IA (`.md`, `llms.txt`, JSON-LD, feeds)
 8. IA local da síntese (llama.cpp, só texto) · 9. Séries e relacionados

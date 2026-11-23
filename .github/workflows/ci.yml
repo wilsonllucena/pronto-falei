@@ -40,6 +40,13 @@ jobs:
             echo "DATABASE_URI=mongodb://127.0.0.1:27017/pronto_falei?replicaSet=rs0&directConnection=true"
             echo "MINIO_ROOT_USER=ci$(openssl rand -hex 4)"
             echo "MINIO_ROOT_PASSWORD=$(openssl rand -hex 16)"
+            echo "S3_ENDPOINT=http://127.0.0.1:3131"
+            echo "S3_BUCKET=pronto-falei-media"
+            echo "S3_REGION=us-east-1"
+            echo "S3_FORCE_PATH_STYLE=true"
+            echo "S3_ACCESS_KEY_ID=ciapp$(openssl rand -hex 4)"
+            echo "S3_SECRET_ACCESS_KEY=$(openssl rand -hex 20)"
+            echo "MEDIA_PUBLIC_URL=http://localhost:3131/pronto-falei-media"
             echo "TZ=America/Sao_Paulo"
           } > .env
           echo "E2E_EMAIL=ci@pronto-falei.local" >> "$GITHUB_ENV"
@@ -59,16 +66,18 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Subir Mongo (replica set) e MinIO
-        run: docker compose up -d --wait mongo minio
+      - name: Subir Mongo (replica set) e MinIO (bucket + usuário do app)
+        run: |
+          docker compose up -d --wait mongo minio
+          docker compose run --rm minio-init
 
-      - name: Testes de integração (Payload + Mongo)
+      - name: Testes de integração (Payload + Mongo + MinIO)
         run: pnpm test:int
 
       - name: Smoke test — subir a stack com a imagem de produção
         run: docker compose up -d --build --wait
 
-      - name: Smoke test — Playwright (home, /api/health, admin)
+      - name: Smoke test — Playwright (home, /api/health, admin, mídia)
         run: |
           pnpm exec playwright install --with-deps chromium
           mkdir -p smoke-shots

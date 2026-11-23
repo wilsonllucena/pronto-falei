@@ -21,7 +21,7 @@ test('home mostra o wordmark', async ({ page }) => {
 test('/api/health responde ok', async ({ request }) => {
   const res = await request.get('/api/health')
   expect(res.status()).toBe(200)
-  expect(await res.json()).toMatchObject({ status: 'ok', checks: { mongo: 'ok' } })
+  expect(await res.json()).toEqual({ status: 'ok', checks: { mongo: 'ok', bucket: 'ok' } })
 })
 
 test('admin: cria o primeiro usuário (ou faz login) e abre o dashboard', async ({ page }) => {
