@@ -44,6 +44,7 @@ export const DEFAULT_FOOTER_NAV: NavLink[] = [
 
 export const postHref = (slug: string) => `/posts/${slug}`
 export const tagHref = (slug: string) => `/tags/${slug}`
+export const categoryHref = (slug: string) => `/categorias/${slug}`
 
 export function navOrFallback(
   items: Navigation['header'] | undefined,

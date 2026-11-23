@@ -30,7 +30,13 @@ export function Header({ nav }: { nav: NavLink[] }) {
           </ul>
         </nav>
         <div className="site-header__tools">
-          <Link href="/busca" className="icon-btn" aria-label="Buscar" title="Buscar">
+          <Link
+            href="/busca"
+            className="icon-btn"
+            aria-label="Buscar"
+            aria-keyshortcuts="/"
+            title="Buscar (atalho: /)"
+          >
             <SearchIcon />
           </Link>
           <ThemeToggle />

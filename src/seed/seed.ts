@@ -60,12 +60,12 @@ export async function seed(payload: Payload): Promise<{ created: string[] }> {
   }
 
   const tags: string[] = []
-  for (const [name, slug] of [
-    ['IA', 'ia'],
-    ['Homelab', 'homelab'],
-    ['Carreira', 'carreira'],
+  for (const [name, slug, description] of [
+    ['IA', 'ia', 'Modelos locais, ferramentas e o que dá pra fazer sem nuvem.'],
+    ['Homelab', 'homelab', 'Servidor em casa, Docker, backup e as dores de manter tudo de pé.'],
+    ['Carreira', 'carreira', 'Trabalho, aprendizado e o dia a dia de dev.'],
   ] as const) {
-    const r = await upsertBySlug(payload, 'tags', slug, { name })
+    const r = await upsertBySlug(payload, 'tags', slug, { name, description })
     tags.push(String(r.doc.id))
     track(`tag ${name}`, r)
   }
@@ -74,9 +74,11 @@ export async function seed(payload: Payload): Promise<{ created: string[] }> {
     'página Sobre',
     await upsertBySlug(payload, 'pages', 'sobre', {
       title: 'Sobre',
-      _status: 'draft',
+      _status: 'published',
       content: lexicalFromBlocks([
-        'Texto provisório do seed de desenvolvimento. A foto e a bio de verdade entram depois.',
+        'Texto provisório do seed de desenvolvimento. A foto e a bio de verdade entram depois, pelo admin.',
+        { heading: 'Por que este blog' },
+        'Espaço pra mostrar como fica o texto livre do Sobre: parágrafos, subtítulos e links, no mesmo estilo dos posts.',
       ]),
     }),
   )
@@ -155,6 +157,33 @@ export async function seed(payload: Payload): Promise<{ created: string[] }> {
         summarySource: 'manual',
       }),
     )
+  }
+
+  // Redirecionamento de exemplo (URL antiga do post de boas-vindas).
+  const existingRedirect = await payload.find({
+    collection: 'redirects',
+    where: { from: { equals: '/2026/ola-mundo' } },
+    limit: 1,
+    depth: 0,
+  })
+  if (!existingRedirect.docs[0]) {
+    const hello = await payload.find({
+      collection: 'posts',
+      where: { slug: { equals: 'ola-mundo-pronto-falei' } },
+      limit: 1,
+      depth: 0,
+    })
+    if (hello.docs[0]) {
+      await payload.create({
+        collection: 'redirects',
+        data: {
+          from: '/2026/ola-mundo',
+          type: '301',
+          to: { type: 'reference', reference: { relationTo: 'posts', value: hello.docs[0].id } },
+        },
+      })
+      created.push('redirecionamento /2026/ola-mundo')
+    }
   }
 
   return { created }

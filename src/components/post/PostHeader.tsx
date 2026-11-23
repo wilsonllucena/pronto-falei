@@ -3,7 +3,7 @@ import Link from 'next/link'
 import React from 'react'
 
 import { PostDate, ReadingTime, TagChips } from '@/components/site/PostBits'
-import type { PostCard } from '@/lib/site'
+import { categoryHref, type PostCard } from '@/lib/site'
 import type { Media } from '@/payload-types'
 
 type Props = { card: PostCard; coverMedia: Media | null }
@@ -16,7 +16,11 @@ export function PostHeader({ card, coverMedia }: Props) {
         <Link href="/blog" className="post-head__back">
           ← Blog
         </Link>
-        {card.category && <span className="post-head__cat">{card.category.name}</span>}
+        {card.category && (
+          <Link href={categoryHref(card.category.slug)} className="post-head__cat">
+            {card.category.name}
+          </Link>
+        )}
       </p>
       <h1 className="post-head__title">{card.title}</h1>
       {card.subtitle && <p className="post-head__subtitle">{card.subtitle}</p>}

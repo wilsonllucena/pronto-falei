@@ -73,6 +73,8 @@ export interface Config {
     tags: Tag;
     categories: Category;
     users: User;
+    search: Search;
+    redirects: Redirect;
     'payload-kv': PayloadKv;
     'payload-jobs': PayloadJob;
     'payload-locked-documents': PayloadLockedDocument;
@@ -87,6 +89,8 @@ export interface Config {
     tags: TagsSelect<false> | TagsSelect<true>;
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
+    search: SearchSelect<false> | SearchSelect<true>;
+    redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
@@ -378,6 +382,56 @@ export interface User {
   collection: 'users';
 }
 /**
+ * Gerado sozinho a partir dos posts publicados. Use "Reindexar" se algo sair do lugar.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "search".
+ */
+export interface Search {
+  id: string;
+  title?: string | null;
+  priority?: number | null;
+  doc: {
+    relationTo: 'posts';
+    value: string | Post;
+  };
+  slug?: string | null;
+  subtitle?: string | null;
+  summary?: string | null;
+  tagNames?: string | null;
+  body?: string | null;
+  publishedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "redirects".
+ */
+export interface Redirect {
+  id: string;
+  /**
+   * Caminho antigo, ex.: /2024/meu-post-antigo (sem o domínio).
+   */
+  from: string;
+  to?: {
+    type?: ('reference' | 'custom') | null;
+    reference?:
+      | ({
+          relationTo: 'posts';
+          value: string | Post;
+        } | null)
+      | ({
+          relationTo: 'pages';
+          value: string | Page;
+        } | null);
+    url?: string | null;
+  };
+  type: '301' | '302';
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
@@ -516,6 +570,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'users';
         value: string | User;
+      } | null)
+    | ({
+        relationTo: 'search';
+        value: string | Search;
+      } | null)
+    | ({
+        relationTo: 'redirects';
+        value: string | Redirect;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -738,6 +800,40 @@ export interface UsersSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "search_select".
+ */
+export interface SearchSelect<T extends boolean = true> {
+  title?: T;
+  priority?: T;
+  doc?: T;
+  slug?: T;
+  subtitle?: T;
+  summary?: T;
+  tagNames?: T;
+  body?: T;
+  publishedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "redirects_select".
+ */
+export interface RedirectsSelect<T extends boolean = true> {
+  from?: T;
+  to?:
+    | T
+    | {
+        type?: T;
+        reference?: T;
+        url?: T;
+      };
+  type?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv_select".
  */
 export interface PayloadKvSelect<T extends boolean = true> {
@@ -815,6 +911,19 @@ export interface SiteSetting {
   id: string;
   siteName: string;
   tagline?: string | null;
+  author?: {
+    name?: string | null;
+    role?: string | null;
+    /**
+     * Quadrada de preferência. Sem foto, aparecem as iniciais.
+     */
+    photo?: (string | null) | Media;
+    /**
+     * Duas ou três frases. Aparece no topo do /sobre.
+     */
+    bio?: string | null;
+    email?: string | null;
+  };
   social?:
     | {
         network: 'x' | 'github' | 'linkedin' | 'instagram' | 'youtube' | 'bluesky' | 'email' | 'outro';
@@ -868,6 +977,15 @@ export interface Navigation {
 export interface SiteSettingsSelect<T extends boolean = true> {
   siteName?: T;
   tagline?: T;
+  author?:
+    | T
+    | {
+        name?: T;
+        role?: T;
+        photo?: T;
+        bio?: T;
+        email?: T;
+      };
   social?:
     | T
     | {

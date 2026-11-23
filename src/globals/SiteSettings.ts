@@ -35,6 +35,47 @@ export const SiteSettings: GlobalConfig = {
       defaultValue: 'Ideias, opiniões e descobertas, sem rodeios.',
     },
     {
+      name: 'author',
+      label: 'Autor (página Sobre)',
+      type: 'group',
+      fields: [
+        {
+          type: 'row',
+          fields: [
+            {
+              name: 'name',
+              label: 'Nome',
+              type: 'text',
+              defaultValue: 'Wilson Lima',
+              admin: { width: '50%' },
+            },
+            {
+              name: 'role',
+              label: 'Linha curta',
+              type: 'text',
+              defaultValue: 'Engenheiro de software fullstack em Brasília',
+              admin: { width: '50%' },
+            },
+          ],
+        },
+        {
+          name: 'photo',
+          label: 'Foto',
+          type: 'upload',
+          relationTo: 'media',
+          admin: { description: 'Quadrada de preferência. Sem foto, aparecem as iniciais.' },
+        },
+        {
+          name: 'bio',
+          label: 'Bio curta',
+          type: 'textarea',
+          maxLength: 400,
+          admin: { description: 'Duas ou três frases. Aparece no topo do /sobre.' },
+        },
+        { name: 'email', label: 'E-mail público', type: 'email' },
+      ],
+    },
+    {
       name: 'social',
       label: 'Redes sociais',
       labels: { singular: 'Rede', plural: 'Redes' },

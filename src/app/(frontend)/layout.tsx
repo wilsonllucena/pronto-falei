@@ -3,6 +3,7 @@ import React from 'react'
 
 import { Footer } from '@/components/site/Footer'
 import { Header } from '@/components/site/Header'
+import { SearchShortcut } from '@/components/site/SearchShortcut'
 import { fontVariables } from '@/design/fonts'
 import { PALETTES, themeCss } from '@/design/tokens'
 import { getSiteChrome } from '@/lib/queries'
@@ -39,6 +40,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           Pular para o conteúdo
         </a>
         <Header nav={chrome.header} />
+        <SearchShortcut />
         <main id="conteudo" tabIndex={-1}>
           {children}
         </main>

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef } from 'react'
 
-import { themeCookie } from '@/lib/theme'
+import { parseTheme, themeCookie } from '@/lib/theme'
 
 function currentTheme(): 'light' | 'dark' {
   const attr = document.documentElement.getAttribute('data-theme')
@@ -13,7 +13,16 @@ function currentTheme(): 'light' | 'dark' {
 /** Alterna claro/escuro e salva no cookie. Os ícones trocam só por CSS (sem piscar). */
 export function ThemeToggle() {
   const btn = useRef<HTMLButtonElement>(null)
-  useEffect(() => btn.current?.setAttribute('data-ready', ''), [])
+  useEffect(() => {
+    // Rede de segurança: no 404 o Next 16 manda a página sem o <head> do layout
+    // (issue vercel/next.js#99793), então o script inline do tema não roda.
+    const root = document.documentElement
+    if (!root.hasAttribute('data-theme')) {
+      const saved = parseTheme(document.cookie.match(/(?:^|; )pf-theme=(light|dark)/)?.[1])
+      if (saved) root.setAttribute('data-theme', saved)
+    }
+    btn.current?.setAttribute('data-ready', '')
+  }, [])
   const onClick = () => {
     const next = currentTheme() === 'dark' ? 'light' : 'dark'
     document.documentElement.setAttribute('data-theme', next)

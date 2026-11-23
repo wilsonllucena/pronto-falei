@@ -8,6 +8,10 @@ export const CACHE_TAGS = {
   site: 'site',
   /** Feeds, sitemap, llms.txt (rotas do passo 7) */
   feeds: 'feeds',
+  /** Páginas editáveis (Sobre e afins) */
+  pages: 'pages',
+  /** Redirecionamentos 301/302 */
+  redirects: 'redirects',
 } as const
 
 type PostLike = { slug?: string | null } | null | undefined

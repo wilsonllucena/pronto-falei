@@ -67,3 +67,30 @@ export const revalidateSiteAfterChange: GlobalAfterChangeHook = async ({ doc, co
   if (!context?.disableRevalidate) await revalidateTags([CACHE_TAGS.site, CACHE_TAGS.feeds])
   return doc
 }
+
+/** Páginas (Sobre e afins): invalida as páginas e os feeds. */
+export const revalidatePagesAfterChange: CollectionAfterChangeHook = async ({ doc, context }) => {
+  if (!context?.disableRevalidate) await revalidateTags([CACHE_TAGS.pages, CACHE_TAGS.feeds])
+  return doc
+}
+
+export const revalidatePagesAfterDelete: CollectionAfterDeleteHook = async ({ doc, context }) => {
+  if (!context?.disableRevalidate) await revalidateTags([CACHE_TAGS.pages, CACHE_TAGS.feeds])
+  return doc
+}
+
+export const revalidateRedirectsAfterChange: CollectionAfterChangeHook = async ({
+  doc,
+  context,
+}) => {
+  if (!context?.disableRevalidate) await revalidateTags([CACHE_TAGS.redirects])
+  return doc
+}
+
+export const revalidateRedirectsAfterDelete: CollectionAfterDeleteHook = async ({
+  doc,
+  context,
+}) => {
+  if (!context?.disableRevalidate) await revalidateTags([CACHE_TAGS.redirects])
+  return doc
+}

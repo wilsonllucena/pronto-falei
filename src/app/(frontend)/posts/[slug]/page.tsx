@@ -2,7 +2,6 @@ import config from '@payload-config'
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
 import { getPayload } from 'payload'
 import React from 'react'
 
@@ -12,6 +11,7 @@ import { PostHeader } from '@/components/post/PostHeader'
 import { QuickSummary } from '@/components/post/QuickSummary'
 import { Related } from '@/components/post/Related'
 import { TocMobile, TocSide } from '@/components/post/Toc'
+import { redirectOrNotFound } from '@/lib/notFound'
 import { absoluteUrl, withHeadingAnchors } from '@/lib/post'
 import { getDraftPost, getPublishedPost, getRelatedPosts } from '@/lib/queries'
 import { seoDescription } from '@/lib/seo'
@@ -76,7 +76,7 @@ export default async function PostPage({ params, searchParams }: Props) {
   const { slug } = await params
   const preview = await isPreview(searchParams)
   const post = await loadPost(slug, preview)
-  if (!post) notFound()
+  if (!post) return redirectOrNotFound(`/posts/${slug}`)
 
   const card = toPostCard(post)
   const coverMedia = typeof post.cover === 'object' ? (post.cover as Media | null) : null

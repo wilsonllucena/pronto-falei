@@ -4,7 +4,7 @@ Blog pessoal do Wilson Lima: ideias, opiniões e descobertas sobre tecnologia,
 inovação e inteligência artificial, sem rodeios.
 
 > **Status:** passos 1 (esqueleto), 2 (collections e admin), 3 (MinIO), 4
-> (design e layout) e 5 (página do post) prontos. Ainda não tem leitura por
+> (design e layout), 5 (página do post) e 6 (navegação e páginas) prontos. Ainda não tem leitura por
 > IA (.md, llms.txt, feeds), síntese automática nem deploy — isso vem nos
 > próximos passos.
 
@@ -126,13 +126,39 @@ finais, que chegam nos passos 6 e 7.
   categorias, mídias e globals chamam `revalidateTag`, então publicar aparece
   na hora; sem invalidação, o cache expira em 1 h.
 
+## Navegação e páginas (passo 6)
+
+- **Busca** `/busca?q=`: `@payloadcms/plugin-search` mantém a collection
+  `search` com os posts publicados (título, linha fina, síntese, tags e o
+  corpo em texto puro). A consulta usa um índice de texto do Mongo em
+  português (radical e sem acento, título com peso maior); se não achar nada,
+  tenta pedaço de palavra. Resultados com o termo destacado no título e num
+  trecho do texto. Atalho **`/`** em qualquer página; funciona sem JS. Fica
+  fora do índice dos buscadores (`noindex`). No admin, "Índice da busca" tem
+  o botão de reindexar.
+- **Tags** `/tags` (todas, com contagem) e `/tags/[slug]` (ano › mês ›
+  título, com outras tags no fim). **Categorias** `/categorias` e
+  `/categorias/[slug]`; a categoria do post e das listas virou link.
+- **Arquivo** `/arquivo`: ano › mês › título, com filtro por categoria
+  (`?categoria=`).
+- **Sobre** `/sobre`: foto (ou iniciais), nome, linha curta e bio curta vêm
+  de *Configurações do site › Autor*; o texto livre é a página `sobre` em
+  Páginas; no fim, "Onde me achar" com as redes, e-mail e RSS. Outras páginas
+  publicadas (ex.: `/uses`) abrem em `/<slug>`.
+- **Redirecionamentos** (`@payloadcms/plugin-redirects`, em Configurações):
+  caminho antigo → post, página ou URL. O caminho é normalizado ao salvar.
+  Antes de qualquer 404 o site confere essa lista e redireciona (308 para
+  permanente, 307 para temporário, que buscadores tratam como 301/302).
+- **404** com busca, atalhos e tags populares.
+
 ### Seed (só dev)
 
 ```bash
 pnpm seed
 ```
 
-Cria categorias (Opinião, Tutorial, Diário), tags, a página Sobre (rascunho),
+Cria categorias (Opinião, Tutorial, Diário), tags com descrição, a página
+Sobre (texto provisório), um redirecionamento de exemplo (`/2026/ola-mundo`),
 capas abstratas geradas com sharp e sete posts de exemplo em meses diferentes
 (três em destaque). É idempotente e **recusa rodar** com `NODE_ENV=production`
 ou contra um banco que não seja local (`127.0.0.1`, `localhost` ou `mongo`).
@@ -225,7 +251,7 @@ roda o Playwright. Os prints do smoke ficam como artefato do workflow.
 
 ## Próximos passos (resumo do plano)
 
-5. Página do post · 6. Navegação · 7. Leitura por IA (`.md`, `llms.txt`, JSON-LD, feeds)
+7. Leitura por IA (`.md`, `llms.txt`, JSON-LD, feeds)
 8. IA local da síntese (llama.cpp, só texto) · 9. Séries e relacionados
 10. Docker de produção e deploy no homelab · 11–13. Umami, Remark42, Listmonk
 14. Publicação (domínio), com aprovação

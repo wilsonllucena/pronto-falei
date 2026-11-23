@@ -1,4 +1,6 @@
 import { mongooseAdapter } from '@payloadcms/db-mongodb'
+import { redirectsPlugin } from '@payloadcms/plugin-redirects'
+import { searchPlugin } from '@payloadcms/plugin-search'
 import { seoPlugin } from '@payloadcms/plugin-seo'
 import { s3Storage } from '@payloadcms/storage-s3'
 import { pt } from '@payloadcms/translations/languages/pt'
@@ -17,8 +19,11 @@ import { healthEndpoint } from './endpoints/health'
 import { contentEditor } from './fields/editor'
 import { Navigation } from './globals/Navigation'
 import { SiteSettings } from './globals/SiteSettings'
+import { normalizePath } from './lib/redirects'
+import { revalidateRedirectsAfterChange, revalidateRedirectsAfterDelete } from './lib/revalidate'
 import { seoDescription, seoTitle } from './lib/seo'
 import { buildPublicFileURL, getStorageSettings, MEDIA_PREFIX } from './lib/storage'
+import { beforeSync, ensureSearchTextIndex, searchFields, SEARCH_SLUG } from './plugins/search'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -47,6 +52,13 @@ export default buildConfig({
     fallbackLanguage: 'pt',
   },
   endpoints: [healthEndpoint],
+  // Índice de texto em português da busca (idempotente; fora do build).
+  onInit: async (payload) => {
+    if (isBuild) return
+    await ensureSearchTextIndex(payload).catch((err) =>
+      payload.logger.error({ err, msg: '[busca] não deu pra criar o índice de texto' }),
+    )
+  },
   // Fila de jobs: por enquanto só o agendamento de publicação (schedulePublish).
   // A fila `ai` da síntese entra no passo 8.
   jobs: {
@@ -91,6 +103,58 @@ export default buildConfig({
           accessKeyId: storage.accessKeyId,
           secretAccessKey: storage.secretAccessKey,
         },
+      },
+    }),
+    // Busca: só posts publicados entram no índice (rascunho sai).
+    searchPlugin({
+      collections: ['posts'],
+      defaultPriorities: { posts: 10 },
+      beforeSync,
+      searchOverrides: {
+        slug: SEARCH_SLUG,
+        labels: { singular: 'Resultado da busca', plural: 'Índice da busca' },
+        admin: {
+          group: 'Configurações',
+          description:
+            'Gerado sozinho a partir dos posts publicados. Use "Reindexar" se algo sair do lugar.',
+        },
+        fields: searchFields,
+      },
+    }),
+    // Redirecionamentos 301/302 (URLs antigas, slugs trocados).
+    redirectsPlugin({
+      collections: ['posts', 'pages'],
+      redirectTypes: ['301', '302'],
+      redirectTypeFieldOverride: { defaultValue: '301' },
+      overrides: {
+        labels: { singular: 'Redirecionamento', plural: 'Redirecionamentos' },
+        admin: {
+          group: 'Configurações',
+          useAsTitle: 'from',
+          defaultColumns: ['from', 'to.type', 'type', 'updatedAt'],
+        },
+        hooks: {
+          afterChange: [revalidateRedirectsAfterChange],
+          afterDelete: [revalidateRedirectsAfterDelete],
+        },
+        fields: ({ defaultFields }) =>
+          defaultFields.map((f) =>
+            f.type === 'text' && f.name === 'from'
+              ? {
+                  ...f,
+                  admin: {
+                    ...f.admin,
+                    description: 'Caminho antigo, ex.: /2024/meu-post-antigo (sem o domínio).',
+                  },
+                  hooks: {
+                    beforeValidate: [
+                      ({ value }: { value?: unknown }) =>
+                        typeof value === 'string' ? normalizePath(value) : value,
+                    ],
+                  },
+                }
+              : f,
+          ),
       },
     }),
     seoPlugin({

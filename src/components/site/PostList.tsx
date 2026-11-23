@@ -2,7 +2,7 @@ import Link from 'next/link'
 import React from 'react'
 
 import { groupByMonth, plural } from '@/lib/dates'
-import type { PostCard } from '@/lib/site'
+import { categoryHref, type PostCard } from '@/lib/site'
 
 import { Cover, PostDate, ReadingTime, TagChips } from './PostBits'
 
@@ -35,7 +35,11 @@ export function PostList({ posts, id }: { posts: PostCard[]; id: string }) {
                     {p.subtitle && <p className="row__subtitle">{p.subtitle}</p>}
                     <p className="row__summary">{p.summary}</p>
                     <p className="row__meta">
-                      {p.category && <span className="meta__cat">{p.category.name}</span>}
+                      {p.category && (
+                        <Link href={categoryHref(p.category.slug)} className="meta__cat">
+                          {p.category.name}
+                        </Link>
+                      )}
                       <ReadingTime minutes={p.readingTime} />
                     </p>
                   </div>

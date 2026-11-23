@@ -66,3 +66,21 @@ export function groupByMonth<T>(items: T[], getDate: (item: T) => string | Date)
 export function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`
 }
+
+export type YearGroup<T> = { year: number; months: MonthGroup<T>[]; count: number }
+
+/** Ano › mês (fuso do site), mantendo a ordem de entrada. Usado no /arquivo e nas tags. */
+export function groupByYear<T>(items: T[], getDate: (item: T) => string | Date): YearGroup<T>[] {
+  const years: YearGroup<T>[] = []
+  for (const g of groupByMonth(items, getDate)) {
+    const year = Number(g.key.slice(0, 4))
+    let y = years.find((x) => x.year === year)
+    if (!y) {
+      y = { year, months: [], count: 0 }
+      years.push(y)
+    }
+    y.months.push(g)
+    y.count += g.items.length
+  }
+  return years
+}
