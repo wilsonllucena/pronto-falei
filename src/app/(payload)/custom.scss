@@ -1,0 +1,35 @@
+/* Botão "Gerar síntese com IA" (passo 8) */
+.pf-ai {
+  margin-bottom: calc(var(--base) * 1.5);
+  padding: calc(var(--base) * 0.75);
+  border: 1px solid var(--theme-elevation-150);
+  border-radius: var(--style-radius-m);
+  background: var(--theme-elevation-50);
+}
+.pf-ai__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--base) * 0.75);
+}
+.pf-ai__hint {
+  flex: 1 1 260px;
+  margin: 0;
+  color: var(--theme-elevation-650);
+  font-size: 0.8125rem;
+}
+.pf-ai__status {
+  margin: calc(var(--base) * 0.75) 0 0;
+  p {
+    margin: 0 0 calc(var(--base) * 0.5);
+  }
+}
+.pf-ai__status--ok {
+  color: var(--theme-success-750);
+}
+.pf-ai__status--error {
+  padding: calc(var(--base) * 0.5) calc(var(--base) * 0.75);
+  border-left: 3px solid var(--theme-error-500);
+  background: var(--theme-error-50);
+  color: var(--theme-error-750);
+}

@@ -4,40 +4,40 @@ Blog pessoal do Wilson Lima: ideias, opiniões e descobertas sobre tecnologia,
 inovação e inteligência artificial, sem rodeios.
 
 > **Status:** passos 1 (esqueleto), 2 (collections e admin), 3 (MinIO), 4
-> (design e layout), 5 (página do post), 6 (navegação e páginas) e 7 (leitura
-> por IA: .md, llms.txt, JSON-LD, feeds) prontos. Ainda não tem síntese
-> automática nem deploy — isso vem nos próximos passos.
+> (design e layout), 5 (página do post), 6 (navegação e páginas), 7 (leitura
+> por IA: .md, llms.txt, JSON-LD, feeds) e 8 (síntese com IA local) prontos.
+> Ainda não tem deploy — isso vem nos próximos passos.
 
 ## Stack
 
-| Peça | Versão |
-| --- | --- |
-| Node | 24.22.3 (`node:24.22.3-alpine` na imagem) |
-| pnpm | 10.34.6 (via `packageManager` / corepack) |
-| Payload CMS (`payload`, `@payloadcms/*`) | 3.94.1 |
-| Next.js | 16.4.6 (output `standalone`) |
-| React | 19.3.1 |
-| TypeScript | 5.9.3 |
-| Banco | MongoDB 8.0.38, replica set de um nó (`rs0`) via `@payloadcms/db-mongodb` |
-| Editor | Lexical (`@payloadcms/richtext-lexical`) |
-| Storage | MinIO (fork `pgsty/silo:RELEASE.2026-11-12T00-00-00Z`) via `@payloadcms/storage-s3` |
-| Testes | Vitest 4 (unit + integração) e Playwright (smoke) |
+| Peça                                     | Versão                                                                              |
+| ---------------------------------------- | ----------------------------------------------------------------------------------- |
+| Node                                     | 24.22.3 (`node:24.22.3-alpine` na imagem)                                           |
+| pnpm                                     | 10.34.6 (via `packageManager` / corepack)                                           |
+| Payload CMS (`payload`, `@payloadcms/*`) | 3.94.1                                                                              |
+| Next.js                                  | 16.4.6 (output `standalone`)                                                        |
+| React                                    | 19.3.1                                                                              |
+| TypeScript                               | 5.9.3                                                                               |
+| Banco                                    | MongoDB 8.0.38, replica set de um nó (`rs0`) via `@payloadcms/db-mongodb`           |
+| Editor                                   | Lexical (`@payloadcms/richtext-lexical`)                                            |
+| Storage                                  | MinIO (fork `pgsty/silo:RELEASE.2026-11-12T00-00-00Z`) via `@payloadcms/storage-s3` |
+| Testes                                   | Vitest 4 (unit + integração) e Playwright (smoke)                                   |
 
 ## Conteúdo no admin (passo 2)
 
 O admin (`/admin`) está em pt-BR e agrupado em Conteúdo, Taxonomia, Admin e
 Configurações.
 
-| Collection / global | O que tem |
-| --- | --- |
-| **Posts** | título, slug único (sem acento), linha fina, capa, texto (Lexical), síntese (`summary`, 160–400 caracteres), `keyPoints` (3–5 itens de até 140), `summarySource` (manual / ia / ia-editada), `summaryReviewed`, `summaryModel`, `summaryGeneratedAt`, categoria, tags, destaque, `publishedAt`, `readingTime`, `wordCount`, relacionados (override manual) e SEO |
-| **Pages** | título, slug, texto e SEO (Sobre, Uses, Contato) |
-| **Media** | `alt` obrigatório, legenda, crédito e focal point; arquivos no MinIO com tamanhos em WebP |
-| **Tags** | nome, slug, descrição |
-| **Categories** | nome, slug, descrição, cor (#RRGGBB) |
-| **Users** | e-mail, nome, avatar, bio. Sem cadastro público |
-| **Configurações do site** (global) | nome, tagline, redes sociais, texto do `llms.txt`, política de robôs de IA |
-| **Navegação** (global) | itens do header e do footer |
+| Collection / global                | O que tem                                                                                                                                                                                                                                                                                                                                                        |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Posts**                          | título, slug único (sem acento), linha fina, capa, texto (Lexical), síntese (`summary`, 160–400 caracteres), `keyPoints` (3–5 itens de até 140), `summarySource` (manual / ia / ia-editada), `summaryReviewed`, `summaryModel`, `summaryGeneratedAt`, categoria, tags, destaque, `publishedAt`, `readingTime`, `wordCount`, relacionados (override manual) e SEO |
+| **Pages**                          | título, slug, texto e SEO (Sobre, Uses, Contato)                                                                                                                                                                                                                                                                                                                 |
+| **Media**                          | `alt` obrigatório, legenda, crédito e focal point; arquivos no MinIO com tamanhos em WebP                                                                                                                                                                                                                                                                        |
+| **Tags**                           | nome, slug, descrição                                                                                                                                                                                                                                                                                                                                            |
+| **Categories**                     | nome, slug, descrição, cor (#RRGGBB)                                                                                                                                                                                                                                                                                                                             |
+| **Users**                          | e-mail, nome, avatar, bio. Sem cadastro público                                                                                                                                                                                                                                                                                                                  |
+| **Configurações do site** (global) | nome, tagline, redes sociais, texto do `llms.txt`, política de robôs de IA                                                                                                                                                                                                                                                                                       |
+| **Navegação** (global)             | itens do header e do footer                                                                                                                                                                                                                                                                                                                                      |
 
 Regras:
 
@@ -142,7 +142,7 @@ finais, que chegam nos passos 6 e 7.
 - **Arquivo** `/arquivo`: ano › mês › título, com filtro por categoria
   (`?categoria=`).
 - **Sobre** `/sobre`: foto (ou iniciais), nome, linha curta e bio curta vêm
-  de *Configurações do site › Autor*; o texto livre é a página `sobre` em
+  de _Configurações do site › Autor_; o texto livre é a página `sobre` em
   Páginas; no fim, "Onde me achar" com as redes, e-mail e RSS. Outras páginas
   publicadas (ex.: `/uses`) abrem em `/<slug>`.
 - **Redirecionamentos** (`@payloadcms/plugin-redirects`, em Configurações):
@@ -156,15 +156,15 @@ finais, que chegam nos passos 6 e 7.
 Tudo sai dos posts publicados, com cache por tag: publicar, despublicar ou
 editar um post (ou o Sobre, ou as Configurações) invalida na hora.
 
-| URL | O que entrega |
-|---|---|
-| `/posts/<slug>.md` | `text/markdown`: frontmatter (title, url, published, updated, tags, reading_time, word_count, summary, key_points) + corpo convertido do Lexical. Link "Ler em Markdown" no Resumo rápido |
-| `/<página>.md` | Páginas publicadas (ex.: `/sobre.md`) |
-| `/llms.txt` | Índice no padrão llmstxt.org: um link pro `.md` de cada post com o TL;DR. A introdução vem de *Configurações › llms.txt* |
-| `/llms-full.txt` | Todos os posts publicados em Markdown num arquivo só |
-| `/rss.xml`, `/atom.xml`, `/feed.json` | RSS 2.0 / Atom / JSON Feed 1.1: description = síntese, `content:encoded` = texto completo (30 mais recentes). `/feed.xml` redireciona pro RSS |
-| `/sitemap.xml` | Páginas, posts, tags e categorias com `lastmod` real |
-| `/robots.txt` | Robôs de IA (GPTBot, ClaudeBot, PerplexityBot, Google-Extended…) liberados ou bloqueados conforme *Configurações › Robôs de IA*; `/admin`, `/api/` e preview fora |
+| URL                                   | O que entrega                                                                                                                                                                             |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/posts/<slug>.md`                    | `text/markdown`: frontmatter (title, url, published, updated, tags, reading_time, word_count, summary, key_points) + corpo convertido do Lexical. Link "Ler em Markdown" no Resumo rápido |
+| `/<página>.md`                        | Páginas publicadas (ex.: `/sobre.md`)                                                                                                                                                     |
+| `/llms.txt`                           | Índice no padrão llmstxt.org: um link pro `.md` de cada post com o TL;DR. A introdução vem de _Configurações › llms.txt_                                                                  |
+| `/llms-full.txt`                      | Todos os posts publicados em Markdown num arquivo só                                                                                                                                      |
+| `/rss.xml`, `/atom.xml`, `/feed.json` | RSS 2.0 / Atom / JSON Feed 1.1: description = síntese, `content:encoded` = texto completo (30 mais recentes). `/feed.xml` redireciona pro RSS                                             |
+| `/sitemap.xml`                        | Páginas, posts, tags e categorias com `lastmod` real                                                                                                                                      |
+| `/robots.txt`                         | Robôs de IA (GPTBot, ClaudeBot, PerplexityBot, Google-Extended…) liberados ou bloqueados conforme _Configurações › Robôs de IA_; `/admin`, `/api/` e preview fora                         |
 
 No HTML: JSON-LD `BlogPosting` em cada post (headline, abstract, description,
 keywords, wordCount, timeRequired, inLanguage pt-BR, autor, datas, imagem) e
@@ -182,6 +182,35 @@ Sobre (texto provisório), um redirecionamento de exemplo (`/2026/ola-mundo`),
 capas abstratas geradas com sharp e sete posts de exemplo em meses diferentes
 (três em destaque). É idempotente e **recusa rodar** com `NODE_ENV=production`
 ou contra um banco que não seja local (`127.0.0.1`, `localhost` ou `mongo`).
+
+## Síntese com IA local (passo 8)
+
+No admin, aba **Síntese** do post, o botão **Gerar síntese com IA** enfileira o
+job `generateSummary` (fila `ai`, um por vez) via
+`POST /api/posts/:id/generate-summary` e acompanha por
+`GET /api/posts/:id/summary-status`. A IA preenche síntese (160–400
+caracteres) e 3–5 pontos-chave; a resposta passa por JSON Schema no
+llama.cpp e por validação no app. Fica gravado `summarySource: ia`, o modelo e
+a data, e o post **só publica depois de revisado**. Se a IA falhar, o admin
+mostra o erro e oferece um **resumo extrativo** (linha fina + primeiro
+parágrafo). Posts longos são resumidos em partes e depois juntados.
+
+A IA é só texto, CPU-only, rodando num container `llm` sem porta no host e sem
+internet (rede `internal`), limitado a 3 GB de RAM e 3 CPUs, que descarrega o
+modelo da memória depois de 120 s parado (`--sleep-idle-seconds 120`).
+
+| Item                     | Valor                                                                                                                                     |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Servidor                 | `ghcr.io/ggml-org/llama.cpp:server-b12627`                                                                                                |
+| Modelo                   | Qwen3-4B-Instruct-2507 Q3_K_M (~1,9 GB, baixado com SHA-256 conferido pelo serviço `llm-model` no volume `llm-models`; nunca vai pro git) |
+| Plano B                  | Gemma 3 1B IT Q4_K_M (~770 MB): só trocar `LLM_MODEL_FILE`, `LLM_MODEL_URL` e `LLM_MODEL_SHA256` (valores no `.env.example`)              |
+| Medido (Qwen, 3 threads) | post de 325 palavras: 37 s; post de 929 palavras: ~64 s; pico de RAM do llama-server ~2,9 GB (incluindo o modelo mapeado)                 |
+| Medido (Gemma, plano B)  | post de 929 palavras: ~17 s; pico ~1,0 GB                                                                                                 |
+
+```bash
+COMPOSE_PROFILES=ia docker compose up -d --wait   # app + IA real (1º start baixa o modelo)
+COMPOSE_PROFILES=mock docker compose up -d --wait # app + mock da IA (CI/testes)
+```
 
 ## Rodando local
 
@@ -230,19 +259,19 @@ docker compose down -v     # apaga banco e arquivos de dev
 
 ## Scripts
 
-| Comando | O que faz |
-| --- | --- |
-| `pnpm dev` | Next + Payload em modo dev |
-| `pnpm build` | Build de produção (standalone) |
-| `pnpm lint` | ESLint (config do Next) |
-| `pnpm typecheck` | `tsc --noEmit` |
-| `pnpm test:unit` | Vitest, sem dependências externas |
-| `pnpm test:int` | Vitest contra o Mongo e o MinIO do compose (replica set, collections, uploads e tamanhos) |
-| `pnpm test` | unit + integração |
-| `pnpm test:e2e` | Smoke com Playwright contra o app rodando (`BASE_URL`, padrão `http://localhost:3130`) |
-| `pnpm seed` | Seed de desenvolvimento (bloqueado em produção) |
-| `pnpm generate:types` | Regenera `src/payload-types.ts` |
-| `pnpm generate:importmap` | Regenera o import map do admin |
+| Comando                   | O que faz                                                                                 |
+| ------------------------- | ----------------------------------------------------------------------------------------- |
+| `pnpm dev`                | Next + Payload em modo dev                                                                |
+| `pnpm build`              | Build de produção (standalone)                                                            |
+| `pnpm lint`               | ESLint (config do Next)                                                                   |
+| `pnpm typecheck`          | `tsc --noEmit`                                                                            |
+| `pnpm test:unit`          | Vitest, sem dependências externas                                                         |
+| `pnpm test:int`           | Vitest contra o Mongo e o MinIO do compose (replica set, collections, uploads e tamanhos) |
+| `pnpm test`               | unit + integração                                                                         |
+| `pnpm test:e2e`           | Smoke com Playwright contra o app rodando (`BASE_URL`, padrão `http://localhost:3130`)    |
+| `pnpm seed`               | Seed de desenvolvimento (bloqueado em produção)                                           |
+| `pnpm generate:types`     | Regenera `src/payload-types.ts`                                                           |
+| `pnpm generate:importmap` | Regenera o import map do admin                                                            |
 
 O smoke test (`01-smoke`) cria o primeiro usuário (ou faz login) e o `02-conteudo`
 cria tag, categoria, página e post pelo admin, com `E2E_EMAIL` e
@@ -259,7 +288,8 @@ quando o Mongo responde ao ping e o bucket do MinIO existe, e `503` caso contrá
 O GitHub Actions (`.github/workflows/ci.yml`) roda a cada push na `main`:
 install, lint, typecheck, testes unitários, build, testes de integração contra o
 Mongo do compose e um smoke test que sobe a stack com a imagem de produção e
-roda o Playwright. Os prints do smoke ficam como artefato do workflow.
+roda o Playwright. No CI a IA é um mock (`llm/mock`, profile `mock`), pra não
+baixar modelo. Os prints do smoke ficam como artefato do workflow.
 
 ## Regras do projeto
 
@@ -271,6 +301,6 @@ roda o Playwright. Os prints do smoke ficam como artefato do workflow.
 
 ## Próximos passos (resumo do plano)
 
-8. IA local da síntese (llama.cpp, só texto) · 9. Séries e relacionados
+9. Séries e relacionados
 10. Docker de produção e deploy no homelab · 11–13. Umami, Remark42, Listmonk
-14. Publicação (domínio), com aprovação
+11. Publicação (domínio), com aprovação

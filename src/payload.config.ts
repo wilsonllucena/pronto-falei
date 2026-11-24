@@ -16,6 +16,7 @@ import { Posts } from './collections/Posts'
 import { Tags } from './collections/Tags'
 import { Users } from './collections/Users'
 import { healthEndpoint } from './endpoints/health'
+import { AI_QUEUE, generateSummaryTask } from './jobs/generateSummary'
 import { contentEditor } from './fields/editor'
 import { Navigation } from './globals/Navigation'
 import { SiteSettings } from './globals/SiteSettings'
@@ -59,10 +60,18 @@ export default buildConfig({
       payload.logger.error({ err, msg: '[busca] não deu pra criar o índice de texto' }),
     )
   },
-  // Fila de jobs: por enquanto só o agendamento de publicação (schedulePublish).
-  // A fila `ai` da síntese entra no passo 8.
+  // Fila de jobs: `default` pro agendamento de publicação (schedulePublish) e
+  // `ai` pra síntese com a IA local (um post por vez; o endpoint já dispara o
+  // job, o autoRun a cada 30 s pega o que sobrar).
   jobs: {
-    autoRun: [{ cron: '* * * * *', queue: 'default', limit: 10 }],
+    tasks: [generateSummaryTask],
+    enableConcurrencyControl: true,
+    // mantém o job concluído: o botão do admin lê o resultado dele no status
+    deleteJobOnComplete: false,
+    autoRun: [
+      { cron: '* * * * *', queue: 'default', limit: 10 },
+      { cron: '*/30 * * * * *', queue: AI_QUEUE, limit: 1 },
+    ],
     shouldAutoRun: () => !isBuild && process.env.PAYLOAD_JOBS_AUTORUN !== 'false',
   },
   secret: process.env.PAYLOAD_SECRET || '',

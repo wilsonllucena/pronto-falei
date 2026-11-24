@@ -74,10 +74,14 @@ jobs:
       - name: Testes de integração (Payload + Mongo + MinIO)
         run: pnpm test:int
 
-      - name: Smoke test — subir a stack com a imagem de produção
+      - name: Smoke test — subir a stack com a imagem de produção (+ mock da IA)
+        env:
+          COMPOSE_PROFILES: mock
         run: docker compose up -d --build --wait
 
-      - name: Smoke test — Playwright (site, post, preview, busca, páginas, leitura por IA, /api/health, admin, mídia)
+      - name: Smoke test — Playwright (site, post, preview, busca, páginas, leitura por IA, síntese com IA mockada, /api/health, admin, mídia)
+        env:
+          E2E_LLM: mock
         run: |
           pnpm exec playwright install --with-deps chromium
           mkdir -p smoke-shots
@@ -85,7 +89,7 @@ jobs:
 
       - name: Logs dos containers
         if: failure()
-        run: docker compose logs --no-color --tail=200
+        run: docker compose --profile mock logs --no-color --tail=200
 
       - name: Prints do smoke test
         if: always()
@@ -100,4 +104,4 @@ jobs:
 
       - name: Derrubar a stack
         if: always()
-        run: docker compose down -v
+        run: docker compose --profile mock down -v

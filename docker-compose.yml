@@ -1,8 +1,13 @@
 # Compose de DESENVOLVIMENTO (passo 1). O compose de produção do Umbrel
-# (auth no Mongo com keyfile, backup, llm, umami etc.) chega no passo 10.
+# (auth no Mongo com keyfile, backup, umami etc.) chega no passo 10.
 #
 #   cp .env.example .env   # e preencha os valores (veja o README)
 #   docker compose up -d --build
+#
+# IA local da síntese (passo 8), escolha um perfil:
+#   COMPOSE_PROFILES=ia   → llama.cpp + Qwen3-4B (baixa ~2,1 GB uma vez pro volume)
+#   COMPOSE_PROFILES=mock → mock do llm (CI e testes, sem modelo)
+# Sem perfil, o botão "Gerar síntese" responde com erro e oferece o resumo extrativo.
 #
 name: pronto-falei-dev
 
@@ -22,7 +27,12 @@ services:
       S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?defina S3_ACCESS_KEY_ID no .env}
       S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?defina S3_SECRET_ACCESS_KEY no .env}
       MEDIA_PUBLIC_URL: ${MEDIA_PUBLIC_URL:-http://localhost:3131/pronto-falei-media}
+      LLM_BASE_URL: http://llm:8080/v1
+      LLM_MODEL_FILE: ${LLM_MODEL_FILE:-Qwen3-4B-Instruct-2507-Q3_K_M.gguf}
+      LLM_TIMEOUT_MS: ${LLM_TIMEOUT_MS:-360000}
+      LLM_MAX_INPUT_TOKENS: ${LLM_MAX_INPUT_TOKENS:-3800}
       TZ: ${TZ:-America/Sao_Paulo}
+    networks: [default, internal]
     depends_on:
       mongo: { condition: service_healthy }
       minio: { condition: service_healthy }
@@ -89,6 +99,67 @@ services:
     volumes: ['./minio/init:/init:ro']
     restart: 'no'
 
+  # ---------------- IA local da síntese (passo 8) ----------------
+
+  llm-model:
+    # Roda uma vez: baixa o GGUF pro volume e confere o SHA-256 (pula se já tem).
+    profiles: [ia]
+    image: curlimages/curl:8.23.0
+    user: '0:0' # grava no volume
+    entrypoint: ['/bin/sh', '/init/fetch-model.sh']
+    environment:
+      MODEL_URL: ${LLM_MODEL_URL:-https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/main/Qwen3-4B-Instruct-2507-Q3_K_M.gguf}
+      MODEL_SHA256: ${LLM_MODEL_SHA256:-9c6e0763577125a994a9bea0bbd7a737ac4498b8a6a4e0f788727553af1806c9}
+      MODEL_FILE: ${LLM_MODEL_FILE:-Qwen3-4B-Instruct-2507-Q3_K_M.gguf}
+    volumes: [llm-models:/models, ./llm:/init:ro]
+    networks: [default] # precisa de internet só pra baixar
+    restart: 'no'
+
+  llm:
+    # llama.cpp server, só CPU e só texto. Sem porta no host e sem saída pra
+    # internet (rede internal). Dorme depois de 2 min parado (libera a RAM).
+    profiles: [ia]
+    image: ghcr.io/ggml-org/llama.cpp:server-b12627
+    depends_on:
+      llm-model: { condition: service_completed_successfully }
+    command: >
+      -m /models/${LLM_MODEL_FILE:-Qwen3-4B-Instruct-2507-Q3_K_M.gguf}
+      --host 0.0.0.0 --port 8080
+      -t 3 -tb 3 -c 5120 -np 1
+      --reasoning off --no-repack --cache-ram 0
+      --sleep-idle-seconds 120
+    volumes: [llm-models:/models:ro]
+    healthcheck:
+      test: ['CMD', 'curl', '-fs', 'http://127.0.0.1:8080/health']
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    deploy: { resources: { limits: { memory: 3g, cpus: '3' } } }
+    networks: [internal]
+    restart: unless-stopped
+
+  llm-mock:
+    # Mesma API do llama.cpp, sem modelo: CI e testes de ponta a ponta.
+    profiles: [mock]
+    image: node:24.22.3-alpine
+    command: ['node', '/mock/server.mjs']
+    volumes: ['./llm/mock:/mock:ro']
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:8080/health']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    deploy: { resources: { limits: { memory: 128m } } }
+    networks:
+      internal: { aliases: [llm] }
+    restart: unless-stopped
+
+networks:
+  default: {}
+  internal: { internal: true }
+
 volumes:
   mongo-data: {}
   minio-data: {}
+  llm-models: {}

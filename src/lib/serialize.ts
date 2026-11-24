@@ -25,6 +25,8 @@ export type LexNode = {
 export type SerializeOptions = {
   /** Transforma caminho interno ("/posts/x") em URL absoluta. */
   absolute: (path: string) => string
+  /** Se definido, blocos de código viram esse texto (ex.: "[código]" pra IA). */
+  codePlaceholder?: string
 }
 
 const F = { bold: 1, italic: 2, strike: 4, underline: 8, code: 16, sub: 32, sup: 64 }
@@ -168,6 +170,9 @@ function mdBlock(n: LexNode, o: SerializeOptions): string {
     }
     case 'block': {
       const f = n.fields ?? {}
+      if (f.blockType === 'code' && o.codePlaceholder !== undefined) {
+        return o.codePlaceholder
+      }
       if (f.blockType === 'code') {
         const code = String(f.code ?? '').replace(/\n+$/, '')
         const fen = fence(code)

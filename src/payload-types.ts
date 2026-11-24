@@ -116,6 +116,7 @@ export interface Config {
   user: User;
   jobs: {
     tasks: {
+      generateSummary: TaskGenerateSummary;
       schedulePublish: TaskSchedulePublish;
       inline: {
         input: unknown;
@@ -178,7 +179,7 @@ export interface Post {
     text: string;
     id?: string | null;
   }[];
-  summarySource: 'manual' | 'ia' | 'ia-editada';
+  summarySource: 'manual' | 'ia' | 'ia-editada' | 'extrativo';
   /**
    * Obrigatória quando a origem é IA.
    */
@@ -500,7 +501,7 @@ export interface PayloadJob {
     | {
         executedAt: string;
         completedAt: string;
-        taskSlug: 'inline' | 'schedulePublish';
+        taskSlug: 'inline' | 'generateSummary' | 'schedulePublish';
         taskID: string;
         input?:
           | {
@@ -533,10 +534,14 @@ export interface PayloadJob {
         id?: string | null;
       }[]
     | null;
-  taskSlug?: ('inline' | 'schedulePublish') | null;
+  taskSlug?: ('inline' | 'generateSummary' | 'schedulePublish') | null;
   queue?: string | null;
   waitUntil?: string | null;
   processing?: boolean | null;
+  /**
+   * Used for concurrency control. Jobs with the same key are subject to exclusive/supersedes rules.
+   */
+  concurrencyKey?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -868,6 +873,7 @@ export interface PayloadJobsSelect<T extends boolean = true> {
   queue?: T;
   waitUntil?: T;
   processing?: T;
+  concurrencyKey?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -1033,6 +1039,30 @@ export interface CollectionsWidget {
     [k: string]: unknown;
   };
   width: 'full';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskGenerateSummary".
+ */
+export interface TaskGenerateSummary {
+  input: {
+    postId: string;
+  };
+  output: {
+    summary: string;
+    keyPoints:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+    model: string;
+    durationMs: number;
+    chunks: number;
+  };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

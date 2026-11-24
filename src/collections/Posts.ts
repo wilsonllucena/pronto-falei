@@ -2,6 +2,7 @@ import type { CollectionConfig } from 'payload'
 
 import { authenticated, authenticatedOrPublished } from '../access'
 import { contentEditor } from '../fields/editor'
+import { generateSummaryEndpoint, summaryStatusEndpoint } from '../endpoints/summary'
 import { seoTab } from '../fields/seo'
 import { slug } from '../fields/slug'
 import { computeReadingStats, setPublishedAt } from '../hooks/postStats'
@@ -60,6 +61,8 @@ export const Posts: CollectionConfig = {
     },
   },
   defaultSort: '-publishedAt',
+  // IA local da síntese (passo 8): enfileira o job e consulta o status
+  endpoints: [generateSummaryEndpoint, summaryStatusEndpoint],
   versions: {
     drafts: {
       autosave: { interval: 1500 },
@@ -101,6 +104,13 @@ export const Posts: CollectionConfig = {
           description:
             'TL;DR e pontos-chave: aparecem no topo do post, no feed, na busca, no OG, no JSON-LD e no .md.',
           fields: [
+            {
+              name: 'summaryAi',
+              type: 'ui',
+              admin: {
+                components: { Field: '/components/admin/GenerateSummary#GenerateSummary' },
+              },
+            },
             {
               name: 'summary',
               label: 'Síntese (TL;DR)',
