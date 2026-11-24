@@ -31,6 +31,7 @@ services:
       LLM_MODEL_FILE: ${LLM_MODEL_FILE:-Qwen3-4B-Instruct-2507-Q3_K_M.gguf}
       LLM_TIMEOUT_MS: ${LLM_TIMEOUT_MS:-360000}
       LLM_MAX_INPUT_TOKENS: ${LLM_MAX_INPUT_TOKENS:-3800}
+      CANONICAL_REDIRECT_HOSTS: ${CANONICAL_REDIRECT_HOSTS:-}
       TZ: ${TZ:-America/Sao_Paulo}
     networks: [default, internal]
     depends_on:

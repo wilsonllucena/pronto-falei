@@ -22,6 +22,8 @@ services:
       # Vazio = admin e imagens com URLs relativas (LAN e Tailscale ao mesmo
       # tempo). No passo 14, a URL do domínio.
       PAYLOAD_SERVER_URL: ${PAYLOAD_SERVER_URL:-}
+      # Hosts que redirecionam (308) pro host da NEXT_PUBLIC_SERVER_URL, ex.: www.
+      CANONICAL_REDIRECT_HOSTS: ${CANONICAL_REDIRECT_HOSTS:-}
       PAYLOAD_SECRET: ${PAYLOAD_SECRET:?defina PAYLOAD_SECRET}
       DATABASE_URI: *mongo-uri
       S3_ENDPOINT: http://minio:9000

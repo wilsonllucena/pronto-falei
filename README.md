@@ -253,6 +253,12 @@ outros apps:
   `172.29.130.0/24` e `172.29.131.0/24`, fora das que o Umbrel já usa.
 - O Mongo tem usuário root (só administração) e um usuário do app com
   `readWrite` só no banco `pronto_falei`, criado na primeira subida.
+- Domínio público: `https://wilsonlima.dev` pelo túnel do Cloudflare (configurado
+  fora do repo) → `umbrel.local:3130`. No `.env`:
+  `NEXT_PUBLIC_SERVER_URL=https://wilsonlima.dev` (canônicos, OG, feeds, sitemap,
+  llms.txt) e `CANONICAL_REDIRECT_HOSTS=www.wilsonlima.dev` (o `src/proxy.ts`
+  redireciona 308 pro apex, mantendo caminho e query; Tailscale e LAN seguem
+  sem redirecionar).
 - As imagens são servidas pelo próprio app (`/api/media/file/…`, URLs
   relativas com `PAYLOAD_SERVER_URL` vazio), então funcionam na LAN e no
   Tailscale. No passo 14 entram `PAYLOAD_SERVER_URL` e `MEDIA_PUBLIC_URL` do

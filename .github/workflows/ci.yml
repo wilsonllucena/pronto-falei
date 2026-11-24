@@ -47,8 +47,10 @@ jobs:
             echo "S3_ACCESS_KEY_ID=ciapp$(openssl rand -hex 4)"
             echo "S3_SECRET_ACCESS_KEY=$(openssl rand -hex 20)"
             echo "MEDIA_PUBLIC_URL=http://localhost:3131/pronto-falei-media"
+            echo "CANONICAL_REDIRECT_HOSTS=www.pronto-falei.test"
             echo "TZ=America/Sao_Paulo"
           } > .env
+          echo "E2E_REDIRECT_HOST=www.pronto-falei.test" >> "$GITHUB_ENV"
           echo "E2E_EMAIL=ci@pronto-falei.local" >> "$GITHUB_ENV"
           pw="$(openssl rand -hex 16)"
           echo "::add-mask::$pw"
