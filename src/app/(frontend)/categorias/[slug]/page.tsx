@@ -7,6 +7,7 @@ import { plural } from '@/lib/dates'
 import { redirectOrNotFound } from '@/lib/notFound'
 import { getCategoryPage } from '@/lib/queries'
 import { categoryHref } from '@/lib/site'
+import { pageMeta } from '@/lib/pageMeta'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,7 +20,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: cat.name,
     description: cat.description || `Textos da categoria ${cat.name} no Pronto, Falei!`,
-    alternates: { canonical: categoryHref(cat.slug) },
+    ...pageMeta(categoryHref(cat.slug)),
   }
 }
 

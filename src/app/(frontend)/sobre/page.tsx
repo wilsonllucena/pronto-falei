@@ -4,6 +4,7 @@ import React from 'react'
 import { AuthorCard, FindMe } from '@/components/pages/AuthorCard'
 import { PostBody } from '@/components/post/PostBody'
 import { getAboutData } from '@/lib/queries'
+import { pageMeta } from '@/lib/pageMeta'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,8 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: page?.meta?.title || 'Sobre',
     description:
       page?.meta?.description || author.bio || `Quem escreve o Pronto, Falei!: ${author.name}.`,
-    alternates: { canonical: '/sobre' },
-    openGraph: { type: 'profile', title: `Sobre · ${author.name}` },
+    ...pageMeta('/sobre', { type: 'profile', title: `Sobre · ${author.name}` }),
   }
 }
 

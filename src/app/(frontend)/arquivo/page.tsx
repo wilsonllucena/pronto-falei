@@ -5,6 +5,7 @@ import React from 'react'
 import { ArchiveList } from '@/components/site/ArchiveList'
 import { plural } from '@/lib/dates'
 import { getAllCategories, getArchive } from '@/lib/queries'
+import { pageMeta } from '@/lib/pageMeta'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,7 +16,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   return {
     title: 'Arquivo',
     description: 'Todos os textos do Pronto, Falei!, por ano e mês.',
-    alternates: { canonical: '/arquivo' },
+    ...pageMeta('/arquivo'),
     // a versão filtrada não precisa ir pro índice
     robots: cat ? { index: false, follow: true } : undefined,
   }

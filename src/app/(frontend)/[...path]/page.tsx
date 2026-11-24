@@ -4,6 +4,7 @@ import React from 'react'
 import { PostBody } from '@/components/post/PostBody'
 import { redirectOrNotFound } from '@/lib/notFound'
 import { getPublishedPage } from '@/lib/queries'
+import { pageMeta } from '@/lib/pageMeta'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,7 +24,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: page.meta?.title || page.title,
     description: page.meta?.description || undefined,
-    alternates: { canonical: `/${page.slug}` },
+    ...pageMeta(`/${page.slug}`),
   }
 }
 

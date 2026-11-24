@@ -7,12 +7,14 @@ import { ViewToggle } from '@/components/site/ViewToggle'
 import { plural } from '@/lib/dates'
 import { getBlogPage } from '@/lib/queries'
 import { pageNumber } from '@/lib/site'
+import { pageMeta } from '@/lib/pageMeta'
 
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'Blog',
   description: 'Todos os textos do Pronto, Falei!, do mais novo pro mais antigo.',
+  ...pageMeta('/blog'),
 }
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> }

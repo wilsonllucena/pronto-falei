@@ -7,6 +7,7 @@ import { plural } from '@/lib/dates'
 import { redirectOrNotFound } from '@/lib/notFound'
 import { getAllTags, getTagPage } from '@/lib/queries'
 import { tagHref } from '@/lib/site'
+import { pageMeta } from '@/lib/pageMeta'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,7 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description:
       tag.description ||
       `Textos sobre ${tag.name} no Pronto, Falei!, do mais novo pro mais antigo.`,
-    alternates: { canonical: tagHref(tag.slug) },
+    ...pageMeta(tagHref(tag.slug)),
   }
 }
 

@@ -5,13 +5,14 @@ import React from 'react'
 import { plural } from '@/lib/dates'
 import { getAllTags } from '@/lib/queries'
 import { tagHref } from '@/lib/site'
+import { pageMeta } from '@/lib/pageMeta'
 
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'Tags',
   description: 'Todos os assuntos do Pronto, Falei!, com a quantidade de textos de cada um.',
-  alternates: { canonical: '/tags' },
+  ...pageMeta('/tags'),
 }
 
 /** Peso visual da tag na nuvem (1 a 4), proporcional à contagem. */

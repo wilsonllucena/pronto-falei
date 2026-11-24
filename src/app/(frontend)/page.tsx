@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import React from 'react'
 
@@ -6,10 +7,13 @@ import { PostList } from '@/components/site/PostList'
 import { ViewToggle } from '@/components/site/ViewToggle'
 import { jsonLdString, websiteJsonLd } from '@/lib/machine'
 import { getHomeData, getSiteChrome, getSiteInfo } from '@/lib/queries'
+import { pageMeta } from '@/lib/pageMeta'
 
 // Lê o banco a cada request por enquanto; ISR com revalidação sob demanda
 // entra junto com as rotas de post e feeds.
 export const dynamic = 'force-dynamic'
+
+export const metadata: Metadata = pageMeta('/')
 
 export default async function HomePage() {
   const [{ featured, recent, total }, chrome, site] = await Promise.all([

@@ -5,13 +5,14 @@ import React from 'react'
 import { plural } from '@/lib/dates'
 import { getAllCategories } from '@/lib/queries'
 import { categoryHref } from '@/lib/site'
+import { pageMeta } from '@/lib/pageMeta'
 
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'Categorias',
   description: 'Os tipos de texto do Pronto, Falei!: opinião, tutorial, diário e afins.',
-  alternates: { canonical: '/categorias' },
+  ...pageMeta('/categorias'),
 }
 
 export default async function CategoriesPage() {
