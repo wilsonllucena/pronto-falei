@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Backup completo: banco (mongodump --archive --gzip) + bucket do MinIO
 # (espelho incremental, empacotado em tar.gz) + analytics (pg_dump do Umami,
-# se PGHOST estiver definido) + comentários (export nativo do Remark42, se
+# e newsletter (Listmonk), se PGHOST estiver definido) + comentários (export nativo do Remark42, se
 # REMARK_INTERNAL_URL estiver definido). Cada backup vira uma pasta em
 # /backups/daily/AAAA-MM-DD_HHMM com SHA256SUMS. Domingo também vai pra
 # /backups/weekly. Retenção: KEEP_DAILY diários e KEEP_WEEKLY semanais.
@@ -31,6 +31,12 @@ if [ -n "${PGHOST:-}" ]; then # analytics (Umami), se configurado
   echo "backup: analytics (postgres)"
   pg_dump -Fc -f "$TMP/umami.dump"
   files+=(umami.dump)
+  if [ -n "${LISTMONK_DB_PASSWORD:-}" ]; then # newsletter (Listmonk)
+    echo "backup: newsletter (postgres)"
+    PGUSER=listmonk PGDATABASE=listmonk PGPASSWORD="$LISTMONK_DB_PASSWORD" \
+      pg_dump -Fc -f "$TMP/listmonk.dump"
+    files+=(listmonk.dump)
+  fi
 fi
 if [ -n "${REMARK_INTERNAL_URL:-}" ]; then # comentários (Remark42), se configurado
   echo "backup: comentários (remark42)"

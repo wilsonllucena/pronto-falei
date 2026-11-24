@@ -18,6 +18,7 @@ import { Tags } from './collections/Tags'
 import { Users } from './collections/Users'
 import { moderateCommentEndpoint, recentCommentsEndpoint } from './endpoints/comentarios'
 import { healthEndpoint } from './endpoints/health'
+import { subscribeEndpoint } from './endpoints/newsletter'
 import { AI_QUEUE, generateSummaryTask } from './jobs/generateSummary'
 import { contentEditor } from './fields/editor'
 import { Navigation } from './globals/Navigation'
@@ -70,7 +71,7 @@ export default buildConfig({
     supportedLanguages: { pt },
     fallbackLanguage: 'pt',
   },
-  endpoints: [healthEndpoint, recentCommentsEndpoint, moderateCommentEndpoint],
+  endpoints: [healthEndpoint, recentCommentsEndpoint, moderateCommentEndpoint, subscribeEndpoint],
   // Índice de texto em português da busca (idempotente; fora do build).
   onInit: async (payload) => {
     if (isBuild) return

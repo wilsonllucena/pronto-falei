@@ -305,6 +305,7 @@ dc up -d --force-recreate --wait app                       # recria o app (limpa
 
 O `restore.sh` confere o `SHA256SUMS`, troca as coleções do banco (`--drop`),
 deixa o bucket igual ao do backup e restaura o banco do Umami (se houver `umami.dump`)
+o banco do Listmonk (se houver `listmonk.dump`; depois reinicie o `listmonk`)
 e os comentários do Remark42 (se houver `remark42.json.gz`; o import nativo substitui
 todos os comentários do site pelos do backup). Sem `--sim` ele só avisa e não mexe em nada.
 
@@ -352,6 +353,32 @@ Remark42 1.18 self-hosted, servido pelo próprio domínio (sem hostname novo).
   o resto; o `restore.sh` reimporta.
 - Em dev: `REMARK_SITE_ID=pronto-falei` no `.env` e
   `COMPOSE_PROFILES=mock,comentarios docker compose up -d --build --wait`.
+
+## Newsletter (passo 13)
+
+Listmonk 6.2 self-hosted, com banco próprio no Postgres compartilhado
+(`pg/listmonk-db.sh` cria e atualiza o usuário e o banco a cada subida).
+
+- Inscrição pelo formulário do blog (`/newsletter` e no fim de cada post):
+  `POST /api/newsletter/inscrever` no app, que chama a API pública de inscrição
+  do Listmonk na rede interna. **Confirmação dupla**: só entra quem clica no
+  link do e-mail. Anti-abuso: campo-isca, 5 pedidos por IP a cada 10 min e no
+  máximo 2 e-mails de confirmação por endereço por hora.
+- As páginas de confirmar, sair e preferências são do Listmonk, servidas pelo
+  domínio em `/newsletter/subscription/*` (e `/public/static/*`), com o visual
+  do blog. Painel e API do Listmonk não passam pelo domínio: painel em
+  `http://<host-do-umbrel>:3135` (LAN/Tailscale), login em
+  `~/pronto-falei/secrets/listmonk.txt`.
+- Sem rastreio (sem pixel nem redirecionamento de links), em pt-BR.
+- **Envio:** SMTP configurável por env (`NEWSLETTER_SMTP_*`, `NEWSLETTER_FROM`),
+  aplicado pelo `scripts/setup-listmonk.py` a cada deploy. Sem
+  `NEWSLETTER_SMTP_HOST` o formulário fica oculto (e `/newsletter` dá 404): o
+  Listmonk recusa a inscrição se não consegue mandar a confirmação.
+- Backup: `listmonk.dump` (pg_dump) junto com o resto.
+- Em dev/CI: `NEWSLETTER_SMTP_HOST=mailpit` e `NEWSLETTER_SMTP_PORT=1025` no
+  `.env`, `COMPOSE_PROFILES=mock,newsletter docker compose up -d --build --wait`,
+  `python3 scripts/setup-listmonk.py --url http://127.0.0.1:3135 --env-file .env`
+  e `docker compose up -d app`. Os e-mails aparecem no Mailpit (127.0.0.1:3134).
 
 ## Rodando local
 

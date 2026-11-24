@@ -13,6 +13,7 @@ import { Related } from '@/components/post/Related'
 import { SeriesNav } from '@/components/post/SeriesNav'
 import { TocMobile, TocSide } from '@/components/post/Toc'
 import { Comments } from '@/components/site/Comments'
+import { NewsletterBox } from '@/components/site/NewsletterBox'
 import { blogPostingJsonLd, jsonLdString, postMdPath } from '@/lib/machine'
 import { redirectOrNotFound } from '@/lib/notFound'
 import { absoluteUrl, withHeadingAnchors } from '@/lib/post'
@@ -24,6 +25,7 @@ import {
   getSiteInfo,
   toMachinePost,
 } from '@/lib/queries'
+import { newsletterEnabled } from '@/lib/newsletter'
 import { remarkSiteId } from '@/lib/remark'
 import { seoDescription } from '@/lib/seo'
 import { toPostCard } from '@/lib/site'
@@ -102,6 +104,7 @@ export default async function PostPage({ params, searchParams }: Props) {
     getSiteInfo(),
   ])
   const commentsSite = remarkSiteId()
+  const showNewsletter = newsletterEnabled()
   const jsonLd = preview ? null : jsonLdString(blogPostingJsonLd(toMachinePost(post), site))
 
   return (
@@ -136,6 +139,7 @@ export default async function PostPage({ params, searchParams }: Props) {
       </div>
       <div className="container">
         <SeriesNav series={series} />
+        {showNewsletter && !preview && <NewsletterBox />}
         {commentsSite && !preview && (
           <Comments
             siteId={commentsSite}

@@ -6,9 +6,9 @@
 #   docker compose -f docker-compose.prod.yml --env-file ../.env up -d --build --wait
 #
 # IA local da síntese: COMPOSE_PROFILES=ia no ../.env (baixa o modelo uma vez).
-# Portas no host: só 3130 (site/admin), 3132 (console do MinIO) e 3133 (painel
-# do Umami), na LAN e no Tailscale. Mongo, Postgres, MinIO (API), Remark42, llm
-# e backup ficam só na rede interna.
+# Portas no host: só 3130 (site/admin), 3132 (console do MinIO), 3133 (painel
+# do Umami) e 3135 (painel do Listmonk), na LAN e no Tailscale. Mongo,
+# Postgres, MinIO (API), Remark42, llm e backup ficam só na rede interna.
 name: pronto-falei
 
 x-mongo-uri: &mongo-uri mongodb://${MONGO_APP_USER:?}:${MONGO_APP_PASSWORD:?}@mongo:27017/pronto_falei?replicaSet=rs0&authSource=pronto_falei
@@ -37,6 +37,10 @@ services:
       REMARK_INTERNAL_URL: http://remark42:8080
       REMARK_SITE_ID: ${REMARK_SITE_ID:-pronto-falei}
       REMARK_ADMIN_PASSWD: ${REMARK_ADMIN_PASSWD:?}
+      # Newsletter (passo 13): o formulário só aparece com SMTP no .env
+      LISTMONK_INTERNAL_URL: http://listmonk:9000
+      LISTMONK_LIST_UUID: ${LISTMONK_LIST_UUID:-}
+      NEWSLETTER_ENABLED: ${NEWSLETTER_SMTP_HOST:+true}
       PAYLOAD_SECRET: ${PAYLOAD_SECRET:?defina PAYLOAD_SECRET}
       DATABASE_URI: *mongo-uri
       S3_ENDPOINT: http://minio:9000
@@ -164,6 +168,8 @@ services:
       REMARK_INTERNAL_URL: http://remark42:8080
       REMARK_SITE_ID: ${REMARK_SITE_ID:-pronto-falei}
       REMARK_ADMIN_PASSWD: ${REMARK_ADMIN_PASSWD:?}
+      # Newsletter (Listmonk): pg_dump com o usuário dono do banco listmonk
+      LISTMONK_DB_PASSWORD: ${LISTMONK_DB_PASSWORD:?}
       TZ: America/Sao_Paulo
     volumes: ['${BACKUP_DIR:-../backups}:/backups']
     depends_on:
@@ -237,7 +243,6 @@ services:
       AUTH_ANON: 'true'
       # O app é o único proxy (rede interna); ele manda o IP real do visitante.
       TRUSTED_PROXY: 172.16.0.0/12,10.0.0.0/8,192.168.0.0/16
-      # Anti-spam básico: tamanho, limite de envio, palavras e nomes proibidos.
       MIN_COMMENT_SIZE: '3'
       MAX_COMMENT_SIZE: '2000'
       UPDATE_LIMIT: '0.2'
@@ -304,6 +309,59 @@ services:
     restart: unless-stopped
 
 # Sub-redes fixas, fora das que o Umbrel já usa (172.17–19, 10.21, LAN 192.168.1.0/24).
+  # ---------------- Newsletter (passo 13) ----------------
+
+  listmonk-db:
+    # Cria/atualiza o banco e o usuário do Listmonk no Postgres compartilhado
+    # (idempotente; roda a cada subida e termina).
+    image: postgres:18.7
+    entrypoint: ['bash', '/listmonk-db.sh']
+    environment:
+      PGHOST: pg
+      PGUSER: postgres
+      PGPASSWORD: ${PG_PASSWORD:?}
+      LISTMONK_DB_PASSWORD: ${LISTMONK_DB_PASSWORD:?}
+    volumes: ['./pg/listmonk-db.sh:/listmonk-db.sh:ro']
+    depends_on:
+      pg: { condition: service_healthy }
+    networks: [internal]
+    restart: 'no'
+
+  listmonk:
+    # Painel só na LAN/Tailscale (porta 3135; login em ../secrets/listmonk.txt).
+    # O público só vê as páginas de confirmar/sair em /newsletter/subscription/*,
+    # repassadas pelo app; a inscrição vem do formulário do blog (API pública).
+    # SMTP configurado pelo scripts/setup-listmonk.py a partir do ../.env.
+    image: listmonk/listmonk:v6.2.0
+    command:
+      - sh
+      - -c
+      - ./listmonk --install --idempotent --yes --config '' && ./listmonk --upgrade --yes --config '' && exec ./listmonk --config ''
+    environment:
+      LISTMONK_app__address: 0.0.0.0:9000
+      LISTMONK_db__host: pg
+      LISTMONK_db__port: '5432'
+      LISTMONK_db__user: listmonk
+      LISTMONK_db__password: ${LISTMONK_DB_PASSWORD:?}
+      LISTMONK_db__database: listmonk
+      LISTMONK_db__ssl_mode: disable
+      LISTMONK_ADMIN_USER: ${LISTMONK_ADMIN_USER:-admin}
+      LISTMONK_ADMIN_PASSWORD: ${LISTMONK_ADMIN_PASSWORD:?}
+      TZ: America/Sao_Paulo
+    ports: ['${LISTMONK_PORT:-3135}:9000']
+    volumes: [listmonk-uploads:/listmonk/uploads]
+    depends_on:
+      listmonk-db: { condition: service_completed_successfully }
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:9000/health']
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    deploy: { resources: { limits: { memory: 128m, cpus: '0.5' } } }
+    networks: [internal, default]
+    restart: unless-stopped
+
 networks:
   default:
     ipam: { config: [{ subnet: '${NET_DEFAULT_SUBNET:-172.29.130.0/24}' }] }
@@ -317,3 +375,4 @@ volumes:
   llm-models: {}
   pg-data: {}
   remark42-data: {}
+  listmonk-uploads: {}

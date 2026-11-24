@@ -10,6 +10,24 @@ type Env = Record<string, string | undefined>
 
 export const COMMENTS_PREFIX = '/comentarios'
 
+export const IFRAME_PATH = `${COMMENTS_PREFIX}/web/iframe.html`
+
+/**
+ * O Remark42 formata datas com Intl.DateTimeFormat(locale) e o locale pt-BR
+ * dele se chama "bp", que o Intl não conhece (cai no inglês: "11/24/2026 às
+ * 1:00 AM"). Este script, injetado no iframe, troca "bp" por "pt-BR".
+ */
+export const DATE_LOCALE_SHIM =
+  "(function(){var D=Intl.DateTimeFormat;function F(l,o){return new D(l==='bp'||(Array.isArray(l)&&l[0]==='bp')?'pt-BR':l,o)}F.prototype=D.prototype;F.supportedLocalesOf=D.supportedLocalesOf.bind(D);Intl.DateTimeFormat=F})();"
+
+/** Injeta o ajuste de data logo depois do <head> do iframe.html do Remark42. */
+export function injectDateShim(html: string): string {
+  const tag = `<script>${DATE_LOCALE_SHIM}</script>`
+  return /<head[^>]*>/i.test(html)
+    ? html.replace(/<head[^>]*>/i, (m) => `${m}${tag}`)
+    : `${tag}${html}`
+}
+
 /** Cookies que o Remark42 usa; os do blog (login do admin, tema) não vão pra ele. */
 export const REMARK_COOKIES = ['JWT', 'XSRF-TOKEN']
 
@@ -34,6 +52,8 @@ export function remarkSiteId(env: Env = process.env): string | null {
 export function remarkTarget(pathname: string, search: string, env: Env = process.env) {
   const upstream = remarkUpstream(env)
   if (!upstream) return null
+  // o iframe é servido por uma rota do app (injeta o ajuste de data em pt-BR)
+  if (pathname === IFRAME_PATH) return null
   if (pathname !== COMMENTS_PREFIX && !pathname.startsWith(`${COMMENTS_PREFIX}/`)) return null
   const rest = pathname.slice(COMMENTS_PREFIX.length) || '/'
   if (rest.split('/').some((seg) => seg === '..')) return null

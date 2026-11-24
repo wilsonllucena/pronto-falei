@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Restaura um backup (pasta com mongo.archive.gz e minio.tar.gz) por cima do
-# banco, do bucket, do analytics e dos comentários atuais: o banco é substituído coleção por coleção (--drop)
+# banco, do bucket, do analytics, da newsletter e dos comentários atuais: o banco é substituído coleção por coleção (--drop)
 # e o bucket fica igual ao do backup (--remove). Confere o SHA256SUMS antes.
 #
 #   restore.sh /backups/daily/2026-11-24_0330 --sim
@@ -39,6 +39,13 @@ mc mirror --quiet --overwrite --remove "$work" "pf/$S3_BUCKET" >/dev/null
 if [ -f "$SRC/umami.dump" ] && [ -n "${PGHOST:-}" ]; then
   echo "restore: analytics (postgres)"
   pg_restore --clean --if-exists --no-owner -d "${PGDATABASE:-umami}" "$SRC/umami.dump"
+fi
+
+if [ -f "$SRC/listmonk.dump" ] && [ -n "${PGHOST:-}" ] && [ -n "${LISTMONK_DB_PASSWORD:-}" ]; then
+  echo "restore: newsletter (postgres)"
+  PGUSER=listmonk PGPASSWORD="$LISTMONK_DB_PASSWORD" \
+    pg_restore --clean --if-exists --no-owner -d listmonk "$SRC/listmonk.dump"
+  echo "restore: reinicie o Listmonk (docker compose ... restart listmonk)"
 fi
 
 if [ -f "$SRC/remark42.json.gz" ] && [ -n "${REMARK_INTERNAL_URL:-}" ]; then

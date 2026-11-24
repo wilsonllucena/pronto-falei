@@ -23,7 +23,7 @@ echo "deploy: enviando ${SHA:0:7} pra $REMOTE:~/$DIR"
 git archive --format=tar "$SHA" |
   remote "set -e; mkdir -p ~/$DIR/backups; rm -rf ~/$DIR/src.new; mkdir ~/$DIR/src.new; tar -x -C ~/$DIR/src.new"
 
-remote "DIR=$DIR SHA=$SHA bash -s" <<'REMOTE'
+remote "DIR=$DIR SHA=$SHA PANEL_HOST=${REMOTE#*@} bash -s" <<'REMOTE'
 set -euo pipefail
 cd "$HOME/$DIR"
 chmod 700 . && mkdir -p secrets && chmod 700 secrets
@@ -59,6 +59,17 @@ if ! grep -q '^UMAMI_WEBSITE_ID=.' ../.env; then
   umami_port=$(sed -n 's/^UMAMI_PORT=//p' ../.env)
   python3 scripts/setup-umami.py --url "http://127.0.0.1:${umami_port:-3133}" \
     --env-file ../.env --secret-file ../secrets/umami.txt --domain "$site_host"
+  dc up -d --wait app
+fi
+# Newsletter: aplica as configurações/SMTP do .env no Listmonk (idempotente),
+# grava ../secrets/listmonk.txt e, na primeira vez, LISTMONK_LIST_UUID.
+list_before=$(sed -n 's/^LISTMONK_LIST_UUID=//p' ../.env)
+listmonk_port=$(sed -n 's/^LISTMONK_PORT=//p' ../.env)
+python3 scripts/setup-listmonk.py --url "http://127.0.0.1:${listmonk_port:-3135}" \
+  --env-file ../.env --secret-file ../secrets/listmonk.txt \
+  --panel-url "http://${PANEL_HOST}:${listmonk_port:-3135}"
+rm -rf scripts/__pycache__
+if [ "$(sed -n 's/^LISTMONK_LIST_UUID=//p' ../.env)" != "$list_before" ]; then
   dc up -d --wait app
 fi
 echo "$SHA" > ../DEPLOYED_COMMIT

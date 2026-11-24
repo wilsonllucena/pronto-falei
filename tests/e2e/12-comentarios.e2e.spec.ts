@@ -73,6 +73,9 @@ test('visitante comenta só com um nome (anônimo), sem cadastro', async ({ page
   await f.locator('textarea').fill(TEXT)
   await f.locator('form[aria-label="Novo comentário"] button[type="submit"]').click()
   await expect(f.getByText(TEXT)).toBeVisible({ timeout: 15_000 })
+  // data em pt-BR (dd/mm/aaaa às hh:mm), não no formato americano
+  await expect(f.getByText(/\d{2}\/\d{2}\/\d{4} às \d{2}:\d{2}/).first()).toBeVisible()
+  await expect(f.getByText(/ (AM|PM)\b/)).toHaveCount(0)
   // só cookies do Remark42 (JWT/XSRF) além dos do site
   const names = (await page.context().cookies()).map((c) => c.name)
   expect(names).toContain('JWT')

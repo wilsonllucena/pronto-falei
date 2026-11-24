@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest'
 import {
   adminAuthHeader,
   filterCookies,
+  IFRAME_PATH,
+  injectDateShim,
   moderationCall,
   parseModeration,
   remarkRequestHeaders,
@@ -117,5 +119,35 @@ describe('remark42: moderação', () => {
     expect(adminAuthHeader({ REMARK_ADMIN_PASSWD: 'p' })).toBe(
       `Basic ${Buffer.from('admin:p').toString('base64')}`,
     )
+  })
+})
+
+describe('remark42: datas em pt-BR', () => {
+  it('o iframe não passa direto pelo proxy (é servido pela rota que injeta o ajuste)', () => {
+    expect(IFRAME_PATH).toBe('/comentarios/web/iframe.html')
+    expect(remarkTarget('/comentarios/web/iframe.html', '?site_id=x', ENV)).toBeNull()
+  })
+  it('injeta o ajuste logo depois do <head>', () => {
+    const out = injectDateShim('<html><head><meta charset="utf-8"></head><body></body></html>')
+    expect(out.indexOf('<script>')).toBe('<html><head>'.length)
+    expect(out).toContain("'pt-BR'")
+  })
+  it('o ajuste troca o locale "bp" por pt-BR', () => {
+    const tag = injectDateShim('<head></head>')
+    const code = tag.slice(tag.indexOf('<script>') + 8, tag.indexOf('</script>'))
+    const original = Intl.DateTimeFormat
+    try {
+      new Function(code)()
+      const d = new Date(Date.UTC(2026, 10, 24, 4, 0))
+      const day = new Intl.DateTimeFormat('bp', { timeZone: 'America/Sao_Paulo' }).format(d)
+      const time = new Intl.DateTimeFormat('bp', {
+        hour: 'numeric',
+        minute: 'numeric',
+        timeZone: 'America/Sao_Paulo',
+      }).format(d)
+      expect(`${day} às ${time}`).toBe('24/11/2026 às 01:00')
+    } finally {
+      Intl.DateTimeFormat = original
+    }
   })
 })

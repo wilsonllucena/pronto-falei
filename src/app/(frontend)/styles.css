@@ -2301,3 +2301,73 @@ a.meta__cat:hover {
   margin-top: 16px;
   min-height: 120px;
 }
+
+/* ---------- Newsletter (passo 13) ---------- */
+.newsletter--box {
+  margin: 40px 0 0;
+  padding: 24px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  background: var(--c-surface);
+}
+.newsletter__title {
+  margin: 0 0 6px;
+  font-family: var(--font-title);
+  font-size: 22px;
+}
+.newsletter__lead {
+  margin: 0 0 16px;
+  color: var(--c-muted);
+}
+.newsletter--page .newsletter__lead {
+  font-size: 18px;
+}
+.newsletter__label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.newsletter__row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.newsletter__input {
+  flex: 1 1 220px;
+  min-height: var(--tap);
+  padding: 0 14px;
+  border: 1px solid var(--c-border);
+  border-radius: 999px;
+  background: var(--c-paper);
+  color: var(--c-ink);
+  font: inherit;
+}
+.newsletter__input:focus {
+  outline: 2px solid var(--c-accent-text);
+  outline-offset: 1px;
+}
+.newsletter__trap {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.newsletter__fine {
+  margin: 10px 0 0;
+  font-size: 14px;
+  color: var(--c-muted);
+}
+.newsletter__error {
+  margin: 10px 0 0;
+  color: var(--c-accent-text);
+  font-weight: 600;
+}
+.newsletter__done {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  background: var(--c-highlight);
+  color: var(--c-ink);
+  font-weight: 600;
+}
