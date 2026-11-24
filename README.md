@@ -253,12 +253,16 @@ outros apps:
   `172.29.130.0/24` e `172.29.131.0/24`, fora das que o Umbrel já usa.
 - O Mongo tem usuário root (só administração) e um usuário do app com
   `readWrite` só no banco `pronto_falei`, criado na primeira subida.
-- Domínio público: `https://wilsonlima.dev` pelo túnel do Cloudflare (configurado
-  fora do repo) → `umbrel.local:3130`. No `.env`:
-  `NEXT_PUBLIC_SERVER_URL=https://wilsonlima.dev` (canônicos, OG, feeds, sitemap,
-  llms.txt) e `CANONICAL_REDIRECT_HOSTS=www.wilsonlima.dev` (o `src/proxy.ts`
-  redireciona 308 pro apex, mantendo caminho e query; Tailscale e LAN seguem
-  sem redirecionar).
+- Domínio público pelo túnel do Cloudflare (configurado fora do repo) →
+  `<host-do-umbrel>:3130`. No `.env` do servidor:
+  - `NEXT_PUBLIC_SERVER_URL=https://<dominio>` (canônicos, OG, feeds, sitemap,
+    llms.txt);
+  - `CANONICAL_REDIRECT_HOSTS=www.<dominio>` (o `src/proxy.ts` redireciona 308
+    pro apex, mantendo caminho e query; Tailscale e LAN seguem sem redirecionar);
+  - `PAYLOAD_ALLOWED_ORIGINS=https://<dominio>,http://<host-tailscale>:3130,http://<ip-lan>:3130`
+    (CSRF do cookie de login e CORS da API; abrir o admin por uma origem fora
+    da lista deixa o login sem efeito). O cookie não é `Secure` de propósito: o
+    Tailscale e a LAN usam http.
 - As imagens são servidas pelo próprio app (`/api/media/file/…`, URLs
   relativas com `PAYLOAD_SERVER_URL` vazio), então funcionam na LAN e no
   Tailscale. No passo 14 entram `PAYLOAD_SERVER_URL` e `MEDIA_PUBLIC_URL` do

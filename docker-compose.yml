@@ -32,6 +32,7 @@ services:
       LLM_TIMEOUT_MS: ${LLM_TIMEOUT_MS:-360000}
       LLM_MAX_INPUT_TOKENS: ${LLM_MAX_INPUT_TOKENS:-3800}
       CANONICAL_REDIRECT_HOSTS: ${CANONICAL_REDIRECT_HOSTS:-}
+      PAYLOAD_ALLOWED_ORIGINS: ${PAYLOAD_ALLOWED_ORIGINS:-}
       TZ: ${TZ:-America/Sao_Paulo}
     networks: [default, internal]
     depends_on:

@@ -24,6 +24,8 @@ services:
       PAYLOAD_SERVER_URL: ${PAYLOAD_SERVER_URL:-}
       # Hosts que redirecionam (308) pro host da NEXT_PUBLIC_SERVER_URL, ex.: www.
       CANONICAL_REDIRECT_HOSTS: ${CANONICAL_REDIRECT_HOSTS:-}
+      # Origens aceitas pelo CSRF/CORS do Payload (domínio, Tailscale, LAN).
+      PAYLOAD_ALLOWED_ORIGINS: ${PAYLOAD_ALLOWED_ORIGINS:-}
       PAYLOAD_SECRET: ${PAYLOAD_SECRET:?defina PAYLOAD_SECRET}
       DATABASE_URI: *mongo-uri
       S3_ENDPOINT: http://minio:9000

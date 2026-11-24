@@ -21,6 +21,7 @@ import { AI_QUEUE, generateSummaryTask } from './jobs/generateSummary'
 import { contentEditor } from './fields/editor'
 import { Navigation } from './globals/Navigation'
 import { SiteSettings } from './globals/SiteSettings'
+import { allowedOrigins } from './lib/origins'
 import { normalizePath } from './lib/redirects'
 import { revalidateRedirectsAfterChange, revalidateRedirectsAfterDelete } from './lib/revalidate'
 import { seoDescription, seoTitle } from './lib/seo'
@@ -38,6 +39,10 @@ export default buildConfig({
   // PAYLOAD_SERVER_URL vazio (produção na LAN + Tailscale) deixa as URLs das
   // imagens relativas (/api/media/file/…), então funcionam em qualquer origem.
   serverURL: process.env['PAYLOAD_SERVER_URL'] ?? (process.env.NEXT_PUBLIC_SERVER_URL || ''),
+  // CSRF do cookie de login e CORS da API só pras origens configuradas
+  // (PAYLOAD_ALLOWED_ORIGINS; sem ela, a origem da NEXT_PUBLIC_SERVER_URL).
+  csrf: allowedOrigins(),
+  cors: allowedOrigins(),
   admin: {
     user: Users.slug,
     meta: {
