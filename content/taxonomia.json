@@ -1,0 +1,32 @@
+{
+  "categorias": [
+    { "slug": "opiniao", "nome": "Opinião", "cor": "#D9480F", "descricao": "O que eu penso, sem rodeios." },
+    { "slug": "tutorial", "nome": "Tutorial", "cor": "#1971C2", "descricao": "Passo a passo do que funcionou pra mim." },
+    { "slug": "diario", "nome": "Diário", "cor": "#2F9E44", "descricao": "Notas do dia a dia de projetos." }
+  ],
+  "tags": [
+    { "slug": "ia", "nome": "IA", "descricao": "Modelos locais, ferramentas e o que dá pra fazer sem nuvem." },
+    { "slug": "homelab", "nome": "Homelab", "descricao": "Servidor em casa, Docker, backup e as dores de manter tudo de pé." },
+    { "slug": "carreira", "nome": "Carreira", "descricao": "Trabalho, aprendizado e o dia a dia de dev." },
+    { "slug": "arquitetura", "nome": "Arquitetura", "descricao": "Decisões de projeto, trade-offs e o custo de cada escolha." },
+    { "slug": "docker", "nome": "Docker", "descricao": "Containers, Compose e deploy sem drama." },
+    { "slug": "pagamentos", "nome": "Pagamentos", "descricao": "Pix, cobrança e conciliação em produtos pequenos." },
+    { "slug": "nextjs", "nome": "Next.js", "descricao": "Next.js, Payload CMS e o front-end deste blog." }
+  ],
+  "series": [
+    {
+      "slug": "homelab-do-zero",
+      "titulo": "Homelab do zero",
+      "descricao": "Do servidor em casa ao app publicado: Docker e túnel, backup testado com restore e IA local leve, sem nuvem."
+    }
+  ],
+  "capas": [
+    { "chave": "homelab", "arquivo": "homelab.png", "alt": "Grade de blocos arredondados em azul e amarelo, como racks de um homelab", "forma": "grade", "fundo": "#22313F", "a": "#3E5568", "b": "#FFD23F" },
+    { "chave": "backup", "arquivo": "backup.png", "alt": "Ondas em camadas laranja e amarelas sobre fundo escuro", "forma": "ondas", "fundo": "#1B1B1B", "a": "#FF7A4D", "b": "#FFC83D" },
+    { "chave": "ia", "arquivo": "ia.png", "alt": "Grade de blocos arredondados em verde sobre fundo escuro, como um processador trabalhando", "forma": "grade", "fundo": "#1D2B24", "a": "#35503F", "b": "#7BD389" },
+    { "chave": "arquitetura", "arquivo": "arquitetura.png", "alt": "Sol amarelo atrás de uma montanha laranja", "forma": "sol", "fundo": "#FFE9C7", "a": "#D9480F", "b": "#FFB703" },
+    { "chave": "payload", "arquivo": "payload.png", "alt": "Ondas em camadas azuis sobre fundo azul-marinho", "forma": "ondas", "fundo": "#0F1F33", "a": "#4C8DFF", "b": "#9CC3FF" },
+    { "chave": "pix", "arquivo": "pix.png", "alt": "Balão de fala verde-água com um ponto de exclamação branco", "forma": "balao", "fundo": "#E8F6F1", "a": "#1A9E77", "b": "#FFFFFF" },
+    { "chave": "blog", "arquivo": "blog.png", "alt": "Balão de fala laranja com um ponto de exclamação amarelo", "forma": "balao", "fundo": "#FAF7F0", "a": "#D9480F", "b": "#FFD23F" }
+  ]
+}

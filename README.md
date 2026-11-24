@@ -393,3 +393,27 @@ baixar modelo. Os prints do smoke ficam como artefato do workflow.
 
 - 11–13: Umami, Remark42, Listmonk
 - 14: Publicação (domínio), com aprovação
+
+## Conteúdo de lançamento (`content/`)
+
+Os artigos reais de lançamento ficam em `content/artigos/*.md` (frontmatter com
+título, slug, síntese, pontos-chave, categoria, tags, capa e série), com
+categorias, tags, séries e capas em `content/taxonomia.json` e `content/capas/`.
+Quem importa é `scripts/import-content.ts` (não é o seed): fala com o blog pela
+API REST com login de admin, roda com Node 24 sem dependências e é idempotente
+por slug. Por padrão cria **rascunhos**; só publica com `--publicar`.
+
+```bash
+node scripts/import-content.ts --simular                      # só valida
+node scripts/import-content.ts --url http://127.0.0.1:3130 \
+  --credenciais ../secrets/admin.txt [--publicar] [--atualizar]
+```
+
+No Umbrel (sem Node no host), pela imagem do Node que já é base do app:
+
+```bash
+cd ~/pronto-falei/src && docker run --rm --network host \
+  -v "$PWD":/work:ro -v ~/pronto-falei/secrets/admin.txt:/run/admin.txt:ro -w /work \
+  node:24.22.3-alpine node scripts/import-content.ts \
+  --url http://127.0.0.1:3130 --credenciais /run/admin.txt --publicar
+```
