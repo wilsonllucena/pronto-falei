@@ -6,6 +6,7 @@ import { Header } from '@/components/site/Header'
 import { SearchShortcut } from '@/components/site/SearchShortcut'
 import { fontVariables } from '@/design/fonts'
 import { PALETTES, themeCss } from '@/design/tokens'
+import { siteUrl } from '@/lib/post'
 import { getSiteChrome } from '@/lib/queries'
 import { themeInitScript } from '@/lib/theme'
 
@@ -14,9 +15,14 @@ import './styles.css'
 // Header e footer vêm do banco (globals e tags populares).
 export const dynamic = 'force-dynamic'
 
-export const metadata: Metadata = {
-  title: { default: 'Pronto, Falei!', template: '%s · Pronto, Falei!' },
-  description: 'Ideias, opiniões e descobertas, sem rodeios. Blog do Wilson Lima.',
+// metadataBase em runtime: OG e canônicos relativos viram absolutos com a URL
+// pública do .env (a mesma imagem Docker serve dev, Umbrel e domínio).
+export function generateMetadata(): Metadata {
+  return {
+    metadataBase: new URL(siteUrl()),
+    title: { default: 'Pronto, Falei!', template: '%s · Pronto, Falei!' },
+    description: 'Ideias, opiniões e descobertas, sem rodeios. Blog do Wilson Lima.',
+  }
 }
 
 export const viewport: Viewport = {

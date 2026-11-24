@@ -1,0 +1,203 @@
+# Compose de PRODUÇÃO (Umbrel, passo 10). Projeto `pronto-falei` em
+# ~/pronto-falei: o código fica em ~/pronto-falei/src (este arquivo), o .env e
+# os backups ficam um nível acima e nunca vão pro git.
+#
+#   cd ~/pronto-falei/src
+#   docker compose -f docker-compose.prod.yml --env-file ../.env up -d --build --wait
+#
+# IA local da síntese: COMPOSE_PROFILES=ia no ../.env (baixa o modelo uma vez).
+# Portas no host: só 3130 (site/admin) e 3132 (console do MinIO), na LAN e no
+# Tailscale. Mongo, MinIO (API), llm e backup ficam só na rede interna.
+name: pronto-falei
+
+x-mongo-uri: &mongo-uri mongodb://${MONGO_APP_USER:?}:${MONGO_APP_PASSWORD:?}@mongo:27017/pronto_falei?replicaSet=rs0&authSource=pronto_falei
+
+services:
+  app:
+    build: .
+    image: pronto-falei-app:latest
+    ports: ['${APP_PORT:-3130}:3000']
+    environment:
+      NEXT_PUBLIC_SERVER_URL: ${NEXT_PUBLIC_SERVER_URL:?defina NEXT_PUBLIC_SERVER_URL}
+      # Vazio = admin e imagens com URLs relativas (LAN e Tailscale ao mesmo
+      # tempo). No passo 14, a URL do domínio.
+      PAYLOAD_SERVER_URL: ${PAYLOAD_SERVER_URL:-}
+      PAYLOAD_SECRET: ${PAYLOAD_SECRET:?defina PAYLOAD_SECRET}
+      DATABASE_URI: *mongo-uri
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: ${S3_BUCKET:-pronto-falei-media}
+      S3_REGION: us-east-1
+      S3_FORCE_PATH_STYLE: 'true'
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?}
+      # Vazio = imagens servidas pelo próprio app (/api/media/file/…), funciona
+      # na LAN e no Tailscale. No passo 14: https://img.<domínio>.
+      MEDIA_PUBLIC_URL: ${MEDIA_PUBLIC_URL:-}
+      LLM_BASE_URL: http://llm:8080/v1
+      LLM_MODEL_FILE: ${LLM_MODEL_FILE:-Qwen3-4B-Instruct-2507-Q3_K_M.gguf}
+      LLM_TIMEOUT_MS: ${LLM_TIMEOUT_MS:-600000}
+      LLM_MAX_INPUT_TOKENS: ${LLM_MAX_INPUT_TOKENS:-3800}
+      TZ: America/Sao_Paulo
+    depends_on:
+      mongo: { condition: service_healthy }
+      minio: { condition: service_healthy }
+      minio-init: { condition: service_completed_successfully }
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3000/api/health']
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    deploy: { resources: { limits: { memory: 768m, cpus: '1.5' } } }
+    networks: [internal, default]
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:8.0.38
+    # Replica set de um nó (o Payload usa transações) com auth: root só pra
+    # administração e um usuário do app com readWrite só no banco pronto_falei.
+    # O keyfile (exigido por replica set com auth) vem do .env.
+    entrypoint:
+      - bash
+      - -c
+      - |
+        printf '%s' "$$MONGO_KEYFILE" > /tmp/mongo-keyfile
+        chown mongodb:mongodb /tmp/mongo-keyfile && chmod 400 /tmp/mongo-keyfile
+        exec docker-entrypoint.sh mongod --replSet rs0 --bind_ip_all \
+          --keyFile /tmp/mongo-keyfile --wiredTigerCacheSizeGB 0.25
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:?}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?}
+      MONGO_KEYFILE: ${MONGO_KEYFILE:?}
+      MONGO_APP_USER: ${MONGO_APP_USER:?}
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:?}
+      TZ: America/Sao_Paulo
+    volumes: [mongo-data:/data/db, './mongo/init:/docker-entrypoint-initdb.d:ro']
+    healthcheck:
+      # Inicia o replica set na primeira subida; saudável só quando é primário.
+      test:
+        - CMD-SHELL
+        - >-
+          mongosh --quiet -u "$$MONGO_INITDB_ROOT_USERNAME" -p "$$MONGO_INITDB_ROOT_PASSWORD"
+          --authenticationDatabase admin --eval "try { rs.status() } catch (e) {
+          rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'mongo:27017' }] }) };
+          if (!db.hello().isWritablePrimary) quit(1)"
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+    deploy: { resources: { limits: { memory: 768m } } }
+    networks: [internal]
+    restart: unless-stopped
+
+  minio:
+    image: pgsty/silo:RELEASE.2026-11-12T00-00-00Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?}
+    # Só o console (LAN/Tailscale). A API fica interna: o app serve as imagens.
+    ports: ['${MINIO_CONSOLE_PORT:-3132}:9001']
+    volumes: [minio-data:/data]
+    healthcheck:
+      test: ['CMD', 'curl', '-fs', 'http://127.0.0.1:9000/minio/health/live']
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    deploy: { resources: { limits: { memory: 512m } } }
+    networks: [internal, default]
+    restart: unless-stopped
+
+  minio-init:
+    # Roda a cada subida (idempotente): bucket, leitura pública só em media/ e
+    # usuário restrito do app.
+    image: pgsty/silo:RELEASE.2026-11-12T00-00-00Z
+    depends_on:
+      minio: { condition: service_healthy }
+    entrypoint: ['/bin/sh', '/init/minio-init.sh']
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?}
+      S3_BUCKET: ${S3_BUCKET:-pronto-falei-media}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?}
+    volumes: ['./minio/init:/init:ro']
+    networks: [internal]
+    restart: 'no'
+
+  backup:
+    # Backup diário às 03:30 (BRT): mongodump + espelho do bucket em
+    # ../backups, com retenção de 7 diários e 4 semanais. Manual:
+    #   docker compose -f docker-compose.prod.yml --env-file ../.env exec backup backup.sh
+    build: ./backup
+    image: pronto-falei-backup:latest
+    user: '${PF_UID:-1000}:${PF_GID:-1000}'
+    environment:
+      DATABASE_URI: *mongo-uri
+      S3_BUCKET: ${S3_BUCKET:-pronto-falei-media}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?}
+      BACKUP_AT: ${BACKUP_AT:-03:30}
+      KEEP_DAILY: ${KEEP_DAILY:-7}
+      KEEP_WEEKLY: ${KEEP_WEEKLY:-4}
+      TZ: America/Sao_Paulo
+    volumes: ['${BACKUP_DIR:-../backups}:/backups']
+    depends_on:
+      mongo: { condition: service_healthy }
+      minio: { condition: service_healthy }
+    deploy: { resources: { limits: { memory: 256m } } }
+    networks: [internal]
+    restart: unless-stopped
+
+  # ---------------- IA local da síntese (perfil ia) ----------------
+
+  llm-model:
+    # Roda uma vez: baixa o GGUF pro volume e confere o SHA-256 (pula se já tem).
+    profiles: [ia]
+    image: curlimages/curl:8.23.0
+    user: '0:0'
+    entrypoint: ['/bin/sh', '/init/fetch-model.sh']
+    environment:
+      MODEL_URL: ${LLM_MODEL_URL:-https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/main/Qwen3-4B-Instruct-2507-Q3_K_M.gguf}
+      MODEL_SHA256: ${LLM_MODEL_SHA256:-9c6e0763577125a994a9bea0bbd7a737ac4498b8a6a4e0f788727553af1806c9}
+      MODEL_FILE: ${LLM_MODEL_FILE:-Qwen3-4B-Instruct-2507-Q3_K_M.gguf}
+    volumes: [llm-models:/models, './llm:/init:ro']
+    networks: [default] # internet só pra baixar
+    restart: 'no'
+
+  llm:
+    # llama.cpp, só CPU e só texto. Sem porta no host nem internet; dorme
+    # depois de 2 min parado (libera a RAM pros outros apps do Umbrel).
+    profiles: [ia]
+    image: ghcr.io/ggml-org/llama.cpp:server-b12627
+    depends_on:
+      llm-model: { condition: service_completed_successfully }
+    command: >
+      -m /models/${LLM_MODEL_FILE:-Qwen3-4B-Instruct-2507-Q3_K_M.gguf}
+      --host 0.0.0.0 --port 8080
+      -t 3 -tb 3 -c 5120 -np 1
+      --reasoning off --no-repack --cache-ram 0
+      --sleep-idle-seconds 120
+    volumes: [llm-models:/models:ro]
+    healthcheck:
+      test: ['CMD', 'curl', '-fs', 'http://127.0.0.1:8080/health']
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+    deploy: { resources: { limits: { memory: 3g, cpus: '3' } } }
+    networks: [internal]
+    restart: unless-stopped
+
+# Sub-redes fixas, fora das que o Umbrel já usa (172.17–19, 10.21, LAN 192.168.1.0/24).
+networks:
+  default:
+    ipam: { config: [{ subnet: '${NET_DEFAULT_SUBNET:-172.29.130.0/24}' }] }
+  internal:
+    internal: true
+    ipam: { config: [{ subnet: '${NET_INTERNAL_SUBNET:-172.29.131.0/24}' }] }
+
+volumes:
+  mongo-data: {}
+  minio-data: {}
+  llm-models: {}

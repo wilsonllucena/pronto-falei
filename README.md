@@ -6,8 +6,8 @@ inovação e inteligência artificial, sem rodeios.
 > **Status:** passos 1 (esqueleto), 2 (collections e admin), 3 (MinIO), 4
 > (design e layout), 5 (página do post), 6 (navegação e páginas), 7 (leitura
 > por IA: .md, llms.txt, JSON-LD, feeds), 8 (síntese com IA local) e 9 (séries
-> e relacionados) prontos.
-> Ainda não tem deploy — isso vem nos próximos passos.
+> e relacionados) e 10 (Docker de produção e deploy no Umbrel) prontos.
+> No ar só pela LAN e pelo Tailscale; o domínio público vem no passo 14.
 
 ## Stack
 
@@ -226,6 +226,76 @@ COMPOSE_PROFILES=mock docker compose up -d --wait # app + mock da IA (CI/testes)
   mais novos no empate. As partes da série do post não se repetem ali.
 - Salvar ou apagar uma série invalida o cache dos posts na hora.
 
+## Produção no Umbrel (passo 10)
+
+Projeto compose `pronto-falei` em `~/pronto-falei` no Umbrel, separado dos
+outros apps:
+
+```
+~/pronto-falei/
+  .env              # segredos (600), gerado no servidor, nunca no git
+  secrets/          # credenciais do admin (700/600)
+  src/              # código do commit no ar (src.prev = versão anterior)
+  backups/          # daily/ e weekly/
+  DEPLOYED_COMMIT
+```
+
+| Serviço                                 | Porta no host              | Limite           |
+| --------------------------------------- | -------------------------- | ---------------- |
+| app (Next + Payload)                    | **3130** (LAN e Tailscale) | 768 MB / 1,5 CPU |
+| mongo 8.0.38 (rs0, auth + keyfile)      | —                          | 768 MB           |
+| MinIO (Silo)                            | **3132** só o console      | 512 MB           |
+| backup (mongodump + espelho do bucket)  | —                          | 256 MB           |
+| llm (llama.cpp + Qwen3-4B, perfil `ia`) | —                          | 3 GB / 3 CPU     |
+
+- Arquivo: `docker-compose.prod.yml`. Mongo, API do MinIO, llm e backup ficam
+  só na rede `internal` (sem saída pra internet). Sub-redes fixas
+  `172.29.130.0/24` e `172.29.131.0/24`, fora das que o Umbrel já usa.
+- O Mongo tem usuário root (só administração) e um usuário do app com
+  `readWrite` só no banco `pronto_falei`, criado na primeira subida.
+- As imagens são servidas pelo próprio app (`/api/media/file/…`, URLs
+  relativas com `PAYLOAD_SERVER_URL` vazio), então funcionam na LAN e no
+  Tailscale. No passo 14 entram `PAYLOAD_SERVER_URL` e `MEDIA_PUBLIC_URL` do
+  domínio.
+
+### Deploy
+
+```bash
+scripts/deploy.sh          # da sua máquina, na raiz do repo (commit atual)
+```
+
+Envia o commit (`git archive`) pro Umbrel, faz backup se a stack já está no ar,
+troca `src` (guarda `src.prev`), builda lá, sobe com `--wait` (só termina com
+os healthchecks ok) e grava `DEPLOYED_COMMIT`. Na primeira vez gera o `.env`
+com segredos fortes (`scripts/gen-prod-env.sh`, sem imprimir nada). Depois do
+primeiro deploy, crie o admin antes de qualquer outra pessoa abrir o `/admin`:
+
+```bash
+ssh umbrel 'cd ~/pronto-falei && ADMIN_EMAIL=voce@exemplo.com bash src/scripts/create-admin.sh secrets/admin.txt'
+```
+
+A senha fica só em `~/pronto-falei/secrets/admin.txt` (600). **Nunca rode o
+seed em produção** (ele recusa banco que não seja local).
+
+### Backup e restauração
+
+Backup diário às 03:30 (BRT) pelo serviço `backup`: `mongodump --archive
+--gzip` + espelho do bucket em tar.gz, com `SHA256SUMS`, em
+`~/pronto-falei/backups/daily/AAAA-MM-DD_HHMM`. Domingo vai também pra
+`weekly/`. Retenção: 7 diários e 4 semanais.
+
+```bash
+cd ~/pronto-falei/src
+dc() { docker compose -f docker-compose.prod.yml --env-file ../.env "$@"; }
+dc exec backup backup.sh                                   # backup agora
+dc stop app
+dc exec backup restore.sh /backups/daily/<pasta> --sim     # restaura banco + bucket
+dc up -d --force-recreate --wait app                       # recria o app (limpa o cache)
+```
+
+O `restore.sh` confere o `SHA256SUMS`, troca as coleções do banco (`--drop`) e
+deixa o bucket igual ao do backup. Sem `--sim` ele só avisa e não mexe em nada.
+
 ## Rodando local
 
 Pré-requisitos: Node 24.22.3+, pnpm 10 e Docker com Compose v2.
@@ -315,6 +385,5 @@ baixar modelo. Os prints do smoke ficam como artefato do workflow.
 
 ## Próximos passos (resumo do plano)
 
-- 10: Docker de produção e deploy no homelab
 - 11–13: Umami, Remark42, Listmonk
 - 14: Publicação (domínio), com aprovação

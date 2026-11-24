@@ -1,5 +1,5 @@
-# Compose de DESENVOLVIMENTO (passo 1). O compose de produção do Umbrel
-# (auth no Mongo com keyfile, backup, umami etc.) chega no passo 10.
+# Compose de DESENVOLVIMENTO (passo 1). Produção no Umbrel (auth no Mongo com
+# keyfile, backup, portas na LAN): docker-compose.prod.yml (passo 10).
 #
 #   cp .env.example .env   # e preencha os valores (veja o README)
 #   docker compose up -d --build

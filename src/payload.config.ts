@@ -35,7 +35,9 @@ const storage = getStorageSettings()
 const mediaPublicUrl = storage.publicUrl
 
 export default buildConfig({
-  serverURL: process.env.NEXT_PUBLIC_SERVER_URL || '',
+  // PAYLOAD_SERVER_URL vazio (produção na LAN + Tailscale) deixa as URLs das
+  // imagens relativas (/api/media/file/…), então funcionam em qualquer origem.
+  serverURL: process.env['PAYLOAD_SERVER_URL'] ?? (process.env.NEXT_PUBLIC_SERVER_URL || ''),
   admin: {
     user: Users.slug,
     meta: {
