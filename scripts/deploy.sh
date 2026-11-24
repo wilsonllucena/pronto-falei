@@ -27,7 +27,7 @@ remote "DIR=$DIR SHA=$SHA bash -s" <<'REMOTE'
 set -euo pipefail
 cd "$HOME/$DIR"
 chmod 700 . && mkdir -p secrets && chmod 700 secrets
-[ -f .env ] || bash src.new/scripts/gen-prod-env.sh .env
+bash src.new/scripts/gen-prod-env.sh .env # cria, ou só acrescenta chaves novas
 dc() { docker compose -f docker-compose.prod.yml --env-file ../.env "$@"; }
 if [ -d src ] && (cd src && dc ps --status running -q backup 2>/dev/null | grep -q .); then
   echo "deploy: backup antes de trocar a versão"
@@ -43,6 +43,15 @@ echo "deploy: build"
 dc build --pull=false
 echo "deploy: subindo (espera os healthchecks)"
 dc up -d --wait --remove-orphans
+# Analytics: na primeira vez troca a senha padrão do Umami (vai pra
+# ../secrets/umami.txt) e cria o site; o app é recriado pra ler o id.
+if ! grep -q '^UMAMI_WEBSITE_ID=.' ../.env; then
+  site_host=$(sed -n 's#^NEXT_PUBLIC_SERVER_URL=https\{0,1\}://\([^/:]*\).*#\1#p' ../.env)
+  umami_port=$(sed -n 's/^UMAMI_PORT=//p' ../.env)
+  python3 scripts/setup-umami.py --url "http://127.0.0.1:${umami_port:-3133}" \
+    --env-file ../.env --secret-file ../secrets/umami.txt --domain "$site_host"
+  dc up -d --wait app
+fi
 echo "$SHA" > ../DEPLOYED_COMMIT
 dc ps --format 'table {{.Service}}\t{{.Status}}'
 echo "deploy: ok ${SHA:0:7}"

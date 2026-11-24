@@ -36,5 +36,10 @@ tar -xzf "$SRC/minio.tar.gz" -C "$work"
 mc alias set pf "${MINIO_URL:-http://minio:9000}" "$S3_ACCESS_KEY_ID" "$S3_SECRET_ACCESS_KEY" >/dev/null
 mc mirror --quiet --overwrite --remove "$work" "pf/$S3_BUCKET" >/dev/null
 
+if [ -f "$SRC/umami.dump" ] && [ -n "${PGHOST:-}" ]; then
+  echo "restore: analytics (postgres)"
+  pg_restore --clean --if-exists --no-owner -d "${PGDATABASE:-umami}" "$SRC/umami.dump"
+fi
+
 echo "restore: ok ($SRC)"
 echo "restore: agora recrie o app (up -d --force-recreate app) pra limpar o cache das páginas"

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Backup completo: banco (mongodump --archive --gzip) + bucket do MinIO
-# (espelho incremental, empacotado em tar.gz). Cada backup vira uma pasta em
+# (espelho incremental, empacotado em tar.gz) + analytics (pg_dump do Umami,
+# se PGHOST estiver definido). Cada backup vira uma pasta em
 # /backups/daily/AAAA-MM-DD_HHMM com SHA256SUMS. Domingo também vai pra
 # /backups/weekly. Retenção: KEEP_DAILY diários e KEEP_WEEKLY semanais.
 set -euo pipefail
@@ -24,7 +25,13 @@ mc mirror --quiet --overwrite --remove "pf/$S3_BUCKET" "$ROOT/.minio-mirror" >/d
 objects=$(find "$ROOT/.minio-mirror" -type f | wc -l)
 tar -czf "$TMP/minio.tar.gz" -C "$ROOT/.minio-mirror" .
 
-(cd "$TMP" && sha256sum mongo.archive.gz minio.tar.gz > SHA256SUMS)
+files=(mongo.archive.gz minio.tar.gz)
+if [ -n "${PGHOST:-}" ]; then # analytics (Umami), se configurado
+  echo "backup: analytics (postgres)"
+  pg_dump -Fc -f "$TMP/umami.dump"
+  files+=(umami.dump)
+fi
+(cd "$TMP" && sha256sum "${files[@]}" > SHA256SUMS)
 printf 'data=%s\nobjetos_no_bucket=%s\n' "$(date -Iseconds)" "$objects" > "$TMP/INFO"
 mv "$TMP" "$DEST"
 

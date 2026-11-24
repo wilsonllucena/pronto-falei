@@ -9,6 +9,7 @@ import { PALETTES, themeCss } from '@/design/tokens'
 import { siteUrl } from '@/lib/post'
 import { getSiteChrome } from '@/lib/queries'
 import { themeInitScript } from '@/lib/theme'
+import { trackerConfig } from '@/lib/umami'
 
 import './styles.css'
 
@@ -34,6 +35,7 @@ export const viewport: Viewport = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const chrome = await getSiteChrome()
+  const tracker = trackerConfig()
   return (
     <html lang="pt-BR" className={fontVariables} suppressHydrationWarning>
       <head>
@@ -55,6 +57,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           href="/feed.json"
         />
         <link rel="alternate" type="text/plain" title="llms.txt" href="/llms.txt" />
+        {/* Analytics self-hosted (passo 11): sem cookies, respeita Do Not Track */}
+        {tracker && (
+          <script
+            defer
+            src="/stats/script.js"
+            data-website-id={tracker.websiteId}
+            data-domains={tracker.domains || undefined}
+            data-do-not-track={tracker.doNotTrack ? 'true' : undefined}
+          />
+        )}
       </head>
       <body>
         <a href="#conteudo" className="skip-link">

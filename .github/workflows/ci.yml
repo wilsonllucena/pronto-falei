@@ -64,9 +64,10 @@ jobs:
           env_file="$(mktemp)"
           for v in NEXT_PUBLIC_SERVER_URL PAYLOAD_SECRET MONGO_ROOT_USER MONGO_ROOT_PASSWORD \
             MONGO_KEYFILE MONGO_APP_USER MONGO_APP_PASSWORD MINIO_ROOT_USER MINIO_ROOT_PASSWORD \
-            S3_ACCESS_KEY_ID S3_SECRET_ACCESS_KEY; do echo "$v=ci-placeholder" >> "$env_file"; done
+            S3_ACCESS_KEY_ID S3_SECRET_ACCESS_KEY PG_PASSWORD UMAMI_DB_PASSWORD UMAMI_APP_SECRET; do echo "$v=ci-placeholder" >> "$env_file"; done
           docker compose -f docker-compose.prod.yml --env-file "$env_file" --profile ia config -q
-          shellcheck -S warning scripts/*.sh backup/*.sh llm/*.sh
+          shellcheck -S warning scripts/*.sh backup/*.sh llm/*.sh pg/init/*.sh
+          python3 -m py_compile scripts/setup-umami.py
 
       - name: Typecheck
         run: pnpm typecheck
@@ -85,12 +86,18 @@ jobs:
       - name: Testes de integração (Payload + Mongo + MinIO)
         run: pnpm test:int
 
-      - name: Smoke test — subir a stack com a imagem de produção (+ mock da IA)
+      - name: Smoke test — subir a stack com a imagem de produção (+ mock da IA e Umami)
         env:
-          COMPOSE_PROFILES: mock
-        run: docker compose up -d --build --wait
+          COMPOSE_PROFILES: mock,stats
+        run: |
+          docker compose up -d --build --wait
+          python3 scripts/setup-umami.py --url http://127.0.0.1:3133 --env-file .env \
+            --secret-file "$RUNNER_TEMP/umami.txt" --domain localhost
+          docker compose up -d --wait app
+          echo "E2E_UMAMI_URL=http://127.0.0.1:3133" >> "$GITHUB_ENV"
+          echo "E2E_UMAMI_SECRET_FILE=$RUNNER_TEMP/umami.txt" >> "$GITHUB_ENV"
 
-      - name: Smoke test — Playwright (site, post, preview, busca, páginas, leitura por IA, síntese com IA mockada, séries, /api/health, admin, mídia)
+      - name: Smoke test — Playwright (site, post, preview, busca, páginas, leitura por IA, síntese com IA mockada, séries, /api/health, admin, mídia, CSRF, analytics)
         env:
           E2E_LLM: mock
         run: |
@@ -100,7 +107,7 @@ jobs:
 
       - name: Logs dos containers
         if: failure()
-        run: docker compose --profile mock logs --no-color --tail=200
+        run: docker compose --profile mock --profile stats logs --no-color --tail=200
 
       - name: Prints do smoke test
         if: always()
@@ -115,4 +122,4 @@ jobs:
 
       - name: Derrubar a stack
         if: always()
-        run: docker compose --profile mock down -v
+        run: docker compose --profile mock --profile stats down -v

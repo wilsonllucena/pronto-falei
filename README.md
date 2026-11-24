@@ -290,7 +290,7 @@ seed em produção** (ele recusa banco que não seja local).
 ### Backup e restauração
 
 Backup diário às 03:30 (BRT) pelo serviço `backup`: `mongodump --archive
---gzip` + espelho do bucket em tar.gz, com `SHA256SUMS`, em
+--gzip` + espelho do bucket em tar.gz + `pg_dump` do Umami (`umami.dump`), com `SHA256SUMS`, em
 `~/pronto-falei/backups/daily/AAAA-MM-DD_HHMM`. Domingo vai também pra
 `weekly/`. Retenção: 7 diários e 4 semanais.
 
@@ -303,8 +303,26 @@ dc exec backup restore.sh /backups/daily/<pasta> --sim     # restaura banco + bu
 dc up -d --force-recreate --wait app                       # recria o app (limpa o cache)
 ```
 
-O `restore.sh` confere o `SHA256SUMS`, troca as coleções do banco (`--drop`) e
-deixa o bucket igual ao do backup. Sem `--sim` ele só avisa e não mexe em nada.
+O `restore.sh` confere o `SHA256SUMS`, troca as coleções do banco (`--drop`),
+deixa o bucket igual ao do backup e restaura o banco do Umami (se houver `umami.dump`). Sem `--sim` ele só avisa e não mexe em nada.
+
+## Analytics (passo 11)
+
+Umami 3.5 self-hosted com Postgres 18 (compartilhado; o Listmonk entra depois).
+
+- O navegador só fala com o próprio blog: o app repassa `/stats/script.js` e
+  `/stats/api/send` pro Umami na rede interna (`src/app/(frontend)/stats`). O
+  resto de `/stats` dá 404, então o painel não fica exposto pelo domínio.
+- Script de ~9 KB com `defer`, sem cookies, respeitando Do Not Track
+  (`UMAMI_RESPECT_DNT`, padrão `true`). Só conta visitas pelo host da URL
+  pública (`UMAMI_DOMAINS`), então Tailscale, LAN e dev não sujam os números.
+- Painel: `http://<host-do-umbrel>:3133` (LAN/Tailscale). Na primeira subida o
+  `deploy.sh` roda o `scripts/setup-umami.py`, que troca a senha padrão do
+  admin por uma aleatória (em `~/pronto-falei/secrets/umami.txt`), cria o site
+  e grava `UMAMI_WEBSITE_ID` no `.env`.
+- Em dev: `COMPOSE_PROFILES=mock,stats docker compose up -d --build --wait`,
+  depois `python3 scripts/setup-umami.py --url http://127.0.0.1:3133 --env-file
+.env --secret-file /tmp/umami.txt --domain localhost` e `docker compose up -d app`.
 
 ## Rodando local
 
@@ -382,7 +400,7 @@ quando o Mongo responde ao ping e o bucket do MinIO existe, e `503` caso contrá
 O GitHub Actions (`.github/workflows/ci.yml`) roda a cada push na `main`:
 install, lint, typecheck, testes unitários, build, testes de integração contra o
 Mongo do compose e um smoke test que sobe a stack com a imagem de produção e
-roda o Playwright. No CI a IA é um mock (`llm/mock`, profile `mock`), pra não
+roda o Playwright (com o Umami do perfil `stats`). No CI a IA é um mock (`llm/mock`, profile `mock`), pra não
 baixar modelo. Os prints do smoke ficam como artefato do workflow.
 
 ## Regras do projeto
@@ -395,7 +413,7 @@ baixar modelo. Os prints do smoke ficam como artefato do workflow.
 
 ## Próximos passos (resumo do plano)
 
-- 11–13: Umami, Remark42, Listmonk
+- 12–13: Remark42, Listmonk
 - 14: Publicação (domínio), com aprovação
 
 ## Conteúdo de lançamento (`content/`)

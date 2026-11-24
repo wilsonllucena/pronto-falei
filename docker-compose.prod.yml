@@ -6,8 +6,9 @@
 #   docker compose -f docker-compose.prod.yml --env-file ../.env up -d --build --wait
 #
 # IA local da síntese: COMPOSE_PROFILES=ia no ../.env (baixa o modelo uma vez).
-# Portas no host: só 3130 (site/admin) e 3132 (console do MinIO), na LAN e no
-# Tailscale. Mongo, MinIO (API), llm e backup ficam só na rede interna.
+# Portas no host: só 3130 (site/admin), 3132 (console do MinIO) e 3133 (painel
+# do Umami), na LAN e no Tailscale. Mongo, Postgres, MinIO (API), llm e backup
+# ficam só na rede interna.
 name: pronto-falei
 
 x-mongo-uri: &mongo-uri mongodb://${MONGO_APP_USER:?}:${MONGO_APP_PASSWORD:?}@mongo:27017/pronto_falei?replicaSet=rs0&authSource=pronto_falei
@@ -26,6 +27,12 @@ services:
       CANONICAL_REDIRECT_HOSTS: ${CANONICAL_REDIRECT_HOSTS:-}
       # Origens aceitas pelo CSRF/CORS do Payload (domínio, Tailscale, LAN).
       PAYLOAD_ALLOWED_ORIGINS: ${PAYLOAD_ALLOWED_ORIGINS:-}
+      # Analytics (passo 11): o app repassa /stats/script.js e /stats/api/send
+      # pro Umami interno. UMAMI_WEBSITE_ID vem do scripts/setup-umami.py.
+      UMAMI_INTERNAL_URL: http://umami:3000
+      UMAMI_WEBSITE_ID: ${UMAMI_WEBSITE_ID:-}
+      UMAMI_DOMAINS: ${UMAMI_DOMAINS:-}
+      UMAMI_RESPECT_DNT: ${UMAMI_RESPECT_DNT:-true}
       PAYLOAD_SECRET: ${PAYLOAD_SECRET:?defina PAYLOAD_SECRET}
       DATABASE_URI: *mongo-uri
       S3_ENDPOINT: http://minio:9000
@@ -130,7 +137,7 @@ services:
     restart: 'no'
 
   backup:
-    # Backup diário às 03:30 (BRT): mongodump + espelho do bucket em
+    # Backup diário às 03:30 (BRT): mongodump + espelho do bucket + pg_dump do Umami em
     # ../backups, com retenção de 7 diários e 4 semanais. Manual:
     #   docker compose -f docker-compose.prod.yml --env-file ../.env exec backup backup.sh
     build: ./backup
@@ -144,13 +151,65 @@ services:
       BACKUP_AT: ${BACKUP_AT:-03:30}
       KEEP_DAILY: ${KEEP_DAILY:-7}
       KEEP_WEEKLY: ${KEEP_WEEKLY:-4}
+      # Analytics (Umami): pg_dump com o usuário dono do banco umami
+      PGHOST: pg
+      PGUSER: umami
+      PGDATABASE: umami
+      PGPASSWORD: ${UMAMI_DB_PASSWORD:?}
       TZ: America/Sao_Paulo
     volumes: ['${BACKUP_DIR:-../backups}:/backups']
     depends_on:
       mongo: { condition: service_healthy }
       minio: { condition: service_healthy }
+      pg: { condition: service_healthy }
     deploy: { resources: { limits: { memory: 256m } } }
     networks: [internal]
+    restart: unless-stopped
+
+  # ---------------- Analytics (passo 11) ----------------
+
+  pg:
+    # Postgres compartilhado (Umami agora, Listmonk depois). Sem porta no host.
+    image: postgres:18.7
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${PG_PASSWORD:?}
+      UMAMI_DB_PASSWORD: ${UMAMI_DB_PASSWORD:?}
+      TZ: America/Sao_Paulo
+    volumes: [pg-data:/var/lib/postgresql, './pg/init:/docker-entrypoint-initdb.d:ro']
+    command: ['postgres', '-c', 'shared_buffers=32MB', '-c', 'max_connections=40']
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d umami']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    deploy: { resources: { limits: { memory: 384m } } }
+    networks: [internal]
+    restart: unless-stopped
+
+  umami:
+    # Painel só na LAN/Tailscale (porta 3133). O público só vê /stats/script.js
+    # e /stats/api/send, repassados pelo app. Sem telemetria nem checagem de
+    # atualização; a base de geolocalização já vem na imagem.
+    image: ghcr.io/umami-software/umami:3.5.0
+    environment:
+      DATABASE_URL: postgresql://umami:${UMAMI_DB_PASSWORD:?}@pg:5432/umami
+      APP_SECRET: ${UMAMI_APP_SECRET:?}
+      DISABLE_TELEMETRY: '1'
+      DISABLE_UPDATES: '1'
+      TZ: America/Sao_Paulo
+    ports: ['${UMAMI_PORT:-3133}:3000']
+    depends_on:
+      pg: { condition: service_healthy }
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3000/api/heartbeat']
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    deploy: { resources: { limits: { memory: 512m, cpus: '1' } } }
+    networks: [internal, default]
     restart: unless-stopped
 
   # ---------------- IA local da síntese (perfil ia) ----------------
@@ -205,3 +264,4 @@ volumes:
   mongo-data: {}
   minio-data: {}
   llm-models: {}
+  pg-data: {}
