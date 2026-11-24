@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Restaura um backup (pasta com mongo.archive.gz e minio.tar.gz) por cima do
-# banco e do bucket atuais: o banco é substituído coleção por coleção (--drop)
+# banco, do bucket, do analytics e dos comentários atuais: o banco é substituído coleção por coleção (--drop)
 # e o bucket fica igual ao do backup (--remove). Confere o SHA256SUMS antes.
 #
 #   restore.sh /backups/daily/2026-11-24_0330 --sim
@@ -39,6 +39,17 @@ mc mirror --quiet --overwrite --remove "$work" "pf/$S3_BUCKET" >/dev/null
 if [ -f "$SRC/umami.dump" ] && [ -n "${PGHOST:-}" ]; then
   echo "restore: analytics (postgres)"
   pg_restore --clean --if-exists --no-owner -d "${PGDATABASE:-umami}" "$SRC/umami.dump"
+fi
+
+if [ -f "$SRC/remark42.json.gz" ] && [ -n "${REMARK_INTERNAL_URL:-}" ]; then
+  echo "restore: comentários (remark42)"
+  : "${REMARK_ADMIN_PASSWD:?}" "${REMARK_SITE_ID:?}"
+  auth() { printf 'user = "admin:%s"\n' "$REMARK_ADMIN_PASSWD"; }
+  # import nativo: substitui todos os comentários do site pelos do backup (assíncrono)
+  gunzip -c "$SRC/remark42.json.gz" |
+    curl -fsS -K <(auth) -X POST -H 'Content-Type: application/json' --data-binary @- \
+      "$REMARK_INTERNAL_URL/api/v1/admin/import?site=$REMARK_SITE_ID&provider=native" >/dev/null
+  auth | curl -fsS -K - -m 300 "$REMARK_INTERNAL_URL/api/v1/admin/wait?site=$REMARK_SITE_ID&timeout=5m" >/dev/null
 fi
 
 echo "restore: ok ($SRC)"

@@ -48,6 +48,7 @@ jobs:
             echo "S3_SECRET_ACCESS_KEY=$(openssl rand -hex 20)"
             echo "MEDIA_PUBLIC_URL=http://localhost:3131/pronto-falei-media"
             echo "CANONICAL_REDIRECT_HOSTS=www.pronto-falei.test"
+            echo "REMARK_SITE_ID=pronto-falei"
             echo "TZ=America/Sao_Paulo"
           } > .env
           echo "E2E_REDIRECT_HOST=www.pronto-falei.test" >> "$GITHUB_ENV"
@@ -55,6 +56,7 @@ jobs:
           pw="$(openssl rand -hex 16)"
           echo "::add-mask::$pw"
           echo "E2E_PASSWORD=$pw" >> "$GITHUB_ENV"
+          echo "E2E_COMMENTS=1" >> "$GITHUB_ENV"
 
       - name: Lint
         run: pnpm lint
@@ -64,7 +66,8 @@ jobs:
           env_file="$(mktemp)"
           for v in NEXT_PUBLIC_SERVER_URL PAYLOAD_SECRET MONGO_ROOT_USER MONGO_ROOT_PASSWORD \
             MONGO_KEYFILE MONGO_APP_USER MONGO_APP_PASSWORD MINIO_ROOT_USER MINIO_ROOT_PASSWORD \
-            S3_ACCESS_KEY_ID S3_SECRET_ACCESS_KEY PG_PASSWORD UMAMI_DB_PASSWORD UMAMI_APP_SECRET; do echo "$v=ci-placeholder" >> "$env_file"; done
+            S3_ACCESS_KEY_ID S3_SECRET_ACCESS_KEY PG_PASSWORD UMAMI_DB_PASSWORD UMAMI_APP_SECRET \
+            REMARK_SECRET REMARK_ADMIN_PASSWD; do echo "$v=ci-placeholder" >> "$env_file"; done
           docker compose -f docker-compose.prod.yml --env-file "$env_file" --profile ia config -q
           shellcheck -S warning scripts/*.sh backup/*.sh llm/*.sh pg/init/*.sh
           python3 -m py_compile scripts/setup-umami.py
@@ -86,9 +89,9 @@ jobs:
       - name: Testes de integração (Payload + Mongo + MinIO)
         run: pnpm test:int
 
-      - name: Smoke test — subir a stack com a imagem de produção (+ mock da IA e Umami)
+      - name: Smoke test — subir a stack com a imagem de produção (+ mock da IA, Umami e Remark42)
         env:
-          COMPOSE_PROFILES: mock,stats
+          COMPOSE_PROFILES: mock,stats,comentarios
         run: |
           docker compose up -d --build --wait
           python3 scripts/setup-umami.py --url http://127.0.0.1:3133 --env-file .env \
@@ -97,7 +100,7 @@ jobs:
           echo "E2E_UMAMI_URL=http://127.0.0.1:3133" >> "$GITHUB_ENV"
           echo "E2E_UMAMI_SECRET_FILE=$RUNNER_TEMP/umami.txt" >> "$GITHUB_ENV"
 
-      - name: Smoke test — Playwright (site, post, preview, busca, páginas, leitura por IA, síntese com IA mockada, séries, /api/health, admin, mídia, CSRF, analytics)
+      - name: Smoke test — Playwright (site, post, preview, busca, páginas, leitura por IA, síntese com IA mockada, séries, /api/health, admin, mídia, CSRF, analytics, comentários)
         env:
           E2E_LLM: mock
         run: |
@@ -107,7 +110,7 @@ jobs:
 
       - name: Logs dos containers
         if: failure()
-        run: docker compose --profile mock --profile stats logs --no-color --tail=200
+        run: docker compose --profile mock --profile stats --profile comentarios logs --no-color --tail=200
 
       - name: Prints do smoke test
         if: always()
@@ -122,4 +125,4 @@ jobs:
 
       - name: Derrubar a stack
         if: always()
-        run: docker compose --profile mock --profile stats down -v
+        run: docker compose --profile mock --profile stats --profile comentarios down -v

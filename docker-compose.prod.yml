@@ -7,8 +7,8 @@
 #
 # IA local da síntese: COMPOSE_PROFILES=ia no ../.env (baixa o modelo uma vez).
 # Portas no host: só 3130 (site/admin), 3132 (console do MinIO) e 3133 (painel
-# do Umami), na LAN e no Tailscale. Mongo, Postgres, MinIO (API), llm e backup
-# ficam só na rede interna.
+# do Umami), na LAN e no Tailscale. Mongo, Postgres, MinIO (API), Remark42, llm
+# e backup ficam só na rede interna.
 name: pronto-falei
 
 x-mongo-uri: &mongo-uri mongodb://${MONGO_APP_USER:?}:${MONGO_APP_PASSWORD:?}@mongo:27017/pronto_falei?replicaSet=rs0&authSource=pronto_falei
@@ -33,6 +33,10 @@ services:
       UMAMI_WEBSITE_ID: ${UMAMI_WEBSITE_ID:-}
       UMAMI_DOMAINS: ${UMAMI_DOMAINS:-}
       UMAMI_RESPECT_DNT: ${UMAMI_RESPECT_DNT:-true}
+      # Comentários (passo 12): /comentarios/* → Remark42 interno.
+      REMARK_INTERNAL_URL: http://remark42:8080
+      REMARK_SITE_ID: ${REMARK_SITE_ID:-pronto-falei}
+      REMARK_ADMIN_PASSWD: ${REMARK_ADMIN_PASSWD:?}
       PAYLOAD_SECRET: ${PAYLOAD_SECRET:?defina PAYLOAD_SECRET}
       DATABASE_URI: *mongo-uri
       S3_ENDPOINT: http://minio:9000
@@ -138,7 +142,7 @@ services:
 
   backup:
     # Backup diário às 03:30 (BRT): mongodump + espelho do bucket + pg_dump do Umami em
-    # ../backups, com retenção de 7 diários e 4 semanais. Manual:
+    # ../backups (+ export dos comentários do Remark42), com retenção de 7 diários e 4 semanais. Manual:
     #   docker compose -f docker-compose.prod.yml --env-file ../.env exec backup backup.sh
     build: ./backup
     image: pronto-falei-backup:latest
@@ -156,12 +160,17 @@ services:
       PGUSER: umami
       PGDATABASE: umami
       PGPASSWORD: ${UMAMI_DB_PASSWORD:?}
+      # Comentários (Remark42): export/import nativo pela API de admin
+      REMARK_INTERNAL_URL: http://remark42:8080
+      REMARK_SITE_ID: ${REMARK_SITE_ID:-pronto-falei}
+      REMARK_ADMIN_PASSWD: ${REMARK_ADMIN_PASSWD:?}
       TZ: America/Sao_Paulo
     volumes: ['${BACKUP_DIR:-../backups}:/backups']
     depends_on:
       mongo: { condition: service_healthy }
       minio: { condition: service_healthy }
       pg: { condition: service_healthy }
+      remark42: { condition: service_healthy }
     deploy: { resources: { limits: { memory: 256m } } }
     networks: [internal]
     restart: unless-stopped
@@ -210,6 +219,48 @@ services:
       start_period: 60s
     deploy: { resources: { limits: { memory: 512m, cpus: '1' } } }
     networks: [internal, default]
+    restart: unless-stopped
+
+  # ---------------- Comentários (passo 12) ----------------
+
+  remark42:
+    # Só na rede interna, sem porta no host: o público chega por
+    # https://<dominio>/comentarios/* (repassado pelo app). Moderação pelo
+    # admin do blog (tela Comentários) e pela API de admin (basic auth).
+    image: umputun/remark42:v1.18.0
+    environment:
+      REMARK_URL: ${NEXT_PUBLIC_SERVER_URL:?}/comentarios
+      SECRET: ${REMARK_SECRET:?}
+      SITE: ${REMARK_SITE_ID:-pronto-falei}
+      ADMIN_PASSWD: ${REMARK_ADMIN_PASSWD:?}
+      # Só comentário anônimo (nome, sem cadastro); sem OAuth nem e-mail.
+      AUTH_ANON: 'true'
+      # O app é o único proxy (rede interna); ele manda o IP real do visitante.
+      TRUSTED_PROXY: 172.16.0.0/12,10.0.0.0/8,192.168.0.0/16
+      # Anti-spam básico: tamanho, limite de envio, palavras e nomes proibidos.
+      MIN_COMMENT_SIZE: '3'
+      MAX_COMMENT_SIZE: '2000'
+      UPDATE_LIMIT: '0.2'
+      VOTES_IP: 'true'
+      # Anti-spam: palavras proibidas (comentário recusado), nomes reservados,
+      # limite de envio por IP (UPDATE_LIMIT/s) e tamanho mínimo/máximo.
+      RESTRICTED_WORDS: ${REMARK_RESTRICTED_WORDS:-casino,cassino,viagra,cialis,porn,porno,xxx,escort,bet365,forex,airdrop}
+      RESTRICTED_NAMES: ${REMARK_RESTRICTED_NAMES:-admin,administrador,moderador,Wilson,Wilson Lima,wilsonlima,Pronto Falei}
+      IMAGE_MAX_SIZE: '1000000'
+      EDIT_TIME: 10m
+      EMOJI: 'true'
+      DISABLE_SIGNATURE: 'true'
+      MAX_BACKUP_FILES: '7'
+      TIME_ZONE: America/Sao_Paulo
+    volumes: [remark42-data:/srv/var]
+    healthcheck:
+      test: ['CMD', 'curl', '-fs', 'http://127.0.0.1:8080/ping']
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    deploy: { resources: { limits: { memory: 192m, cpus: '0.5' } } }
+    networks: [internal]
     restart: unless-stopped
 
   # ---------------- IA local da síntese (perfil ia) ----------------
@@ -265,3 +316,4 @@ volumes:
   minio-data: {}
   llm-models: {}
   pg-data: {}
+  remark42-data: {}

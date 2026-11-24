@@ -16,6 +16,7 @@ import { Pages } from './collections/Pages'
 import { Posts } from './collections/Posts'
 import { Tags } from './collections/Tags'
 import { Users } from './collections/Users'
+import { moderateCommentEndpoint, recentCommentsEndpoint } from './endpoints/comentarios'
 import { healthEndpoint } from './endpoints/health'
 import { AI_QUEUE, generateSummaryTask } from './jobs/generateSummary'
 import { contentEditor } from './fields/editor'
@@ -51,6 +52,15 @@ export default buildConfig({
     importMap: {
       baseDir: path.resolve(dirname),
     },
+    components: {
+      afterNavLinks: ['/components/admin/ComentariosNavLink#ComentariosNavLink'],
+      views: {
+        comentarios: {
+          Component: '/components/admin/ComentariosView#ComentariosView',
+          path: '/comentarios',
+        },
+      },
+    },
   },
   collections: [Posts, Series, Pages, Media, Tags, Categories, Users],
   globals: [SiteSettings, Navigation],
@@ -60,7 +70,7 @@ export default buildConfig({
     supportedLanguages: { pt },
     fallbackLanguage: 'pt',
   },
-  endpoints: [healthEndpoint],
+  endpoints: [healthEndpoint, recentCommentsEndpoint, moderateCommentEndpoint],
   // Índice de texto em português da busca (idempotente; fora do build).
   onInit: async (payload) => {
     if (isBuild) return

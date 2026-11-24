@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Backup completo: banco (mongodump --archive --gzip) + bucket do MinIO
 # (espelho incremental, empacotado em tar.gz) + analytics (pg_dump do Umami,
-# se PGHOST estiver definido). Cada backup vira uma pasta em
+# se PGHOST estiver definido) + comentários (export nativo do Remark42, se
+# REMARK_INTERNAL_URL estiver definido). Cada backup vira uma pasta em
 # /backups/daily/AAAA-MM-DD_HHMM com SHA256SUMS. Domingo também vai pra
 # /backups/weekly. Retenção: KEEP_DAILY diários e KEEP_WEEKLY semanais.
 set -euo pipefail
@@ -30,6 +31,16 @@ if [ -n "${PGHOST:-}" ]; then # analytics (Umami), se configurado
   echo "backup: analytics (postgres)"
   pg_dump -Fc -f "$TMP/umami.dump"
   files+=(umami.dump)
+fi
+if [ -n "${REMARK_INTERNAL_URL:-}" ]; then # comentários (Remark42), se configurado
+  echo "backup: comentários (remark42)"
+  : "${REMARK_ADMIN_PASSWD:?}" "${REMARK_SITE_ID:?}"
+  # senha via stdin (-K -), nunca na linha de comando
+  printf 'user = "admin:%s"\n' "$REMARK_ADMIN_PASSWD" |
+    curl -fsS -K - "$REMARK_INTERNAL_URL/api/v1/admin/export?site=$REMARK_SITE_ID&mode=stream" |
+    gzip -9 > "$TMP/remark42.json.gz"
+  gzip -t "$TMP/remark42.json.gz"
+  files+=(remark42.json.gz)
 fi
 (cd "$TMP" && sha256sum "${files[@]}" > SHA256SUMS)
 printf 'data=%s\nobjetos_no_bucket=%s\n' "$(date -Iseconds)" "$objects" > "$TMP/INFO"

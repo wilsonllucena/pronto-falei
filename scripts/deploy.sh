@@ -28,6 +28,15 @@ set -euo pipefail
 cd "$HOME/$DIR"
 chmod 700 . && mkdir -p secrets && chmod 700 secrets
 bash src.new/scripts/gen-prod-env.sh .env # cria, ou só acrescenta chaves novas
+# Comentários: credencial de admin do Remark42 num arquivo 600 (nada no terminal)
+if [ ! -f secrets/remark42.txt ]; then
+  (umask 077 && {
+    echo "# Admin do Remark42 (moderação). Use pelo admin do blog: /admin/comentarios."
+    echo "# A API de admin do Remark42 só é acessível na rede interna dos containers."
+    echo "usuario=admin"
+    sed -n 's/^REMARK_ADMIN_PASSWD=/senha=/p' .env
+  } > secrets/remark42.txt)
+fi
 dc() { docker compose -f docker-compose.prod.yml --env-file ../.env "$@"; }
 if [ -d src ] && (cd src && dc ps --status running -q backup 2>/dev/null | grep -q .); then
   echo "deploy: backup antes de trocar a versão"

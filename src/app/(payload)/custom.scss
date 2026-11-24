@@ -33,3 +33,12 @@
   background: var(--theme-error-50);
   color: var(--theme-error-750);
 }
+
+/* Moderação de comentários (passo 12) */
+.moderation__list { list-style: none; padding: 0; margin: 0 0 2rem; }
+.moderation__item { border-bottom: 1px solid var(--theme-elevation-150); padding: 0.75rem 0; }
+.moderation__meta { font-size: 0.85rem; color: var(--theme-elevation-600); }
+.moderation__text { margin: 0.35rem 0; white-space: pre-wrap; }
+.moderation__actions { display: flex; gap: 0.5rem; }
+.moderation__error { color: var(--theme-error-500); }
+.comentarios-nav-link { margin-top: 0.5rem; }

@@ -304,7 +304,9 @@ dc up -d --force-recreate --wait app                       # recria o app (limpa
 ```
 
 O `restore.sh` confere o `SHA256SUMS`, troca as coleções do banco (`--drop`),
-deixa o bucket igual ao do backup e restaura o banco do Umami (se houver `umami.dump`). Sem `--sim` ele só avisa e não mexe em nada.
+deixa o bucket igual ao do backup e restaura o banco do Umami (se houver `umami.dump`)
+e os comentários do Remark42 (se houver `remark42.json.gz`; o import nativo substitui
+todos os comentários do site pelos do backup). Sem `--sim` ele só avisa e não mexe em nada.
 
 ## Analytics (passo 11)
 
@@ -323,6 +325,33 @@ Umami 3.5 self-hosted com Postgres 18 (compartilhado; o Listmonk entra depois).
 - Em dev: `COMPOSE_PROFILES=mock,stats docker compose up -d --build --wait`,
   depois `python3 scripts/setup-umami.py --url http://127.0.0.1:3133 --env-file
 .env --secret-file /tmp/umami.txt --domain localhost` e `docker compose up -d app`.
+
+## Comentários (passo 12)
+
+Remark42 1.18 self-hosted, servido pelo próprio domínio (sem hostname novo).
+
+- `src/proxy.ts` repassa `/comentarios/*` pro container do Remark42 na rede
+  interna (sem porta no host). Só os cookies do Remark42 (`JWT`, `XSRF-TOKEN`)
+  seguem; o login do admin do blog e o cabeçalho `Authorization` não. Por isso
+  a API de admin do Remark42 não é acessível pelo domínio.
+- Widget (`src/components/site/Comments.tsx`) com lazy-load: o script só é
+  baixado quando a seção chega perto da tela. Segue o tema claro/escuro do site
+  (inclusive ao trocar), em pt-BR.
+- Login dos comentaristas: anônimo, só com um nome (sem OAuth, sem e-mail).
+  Os cookies do Remark42 são `Secure` com URL https, então comentar funciona
+  pelo domínio público (ler funciona em qualquer endereço).
+- Anti-spam: palavras proibidas (`REMARK_RESTRICTED_WORDS`), nomes reservados
+  (`REMARK_RESTRICTED_NAMES`, ninguém comenta como "Wilson"), limite de envio
+  por IP, tamanho de 3 a 2000 caracteres e edição só nos primeiros 10 minutos.
+- Moderação: no admin do blog, menu **Comentários** (`/admin/comentarios`):
+  últimos 50 comentários, apagar, bloquear autor (bloqueio permanente some com
+  os comentários dele) e desbloquear. O app fala com a API de admin do
+  Remark42 com `REMARK_ADMIN_PASSWD` (credencial em
+  `~/pronto-falei/secrets/remark42.txt`, gravada pelo `deploy.sh`).
+- Backup: o `backup.sh` exporta os comentários (`remark42.json.gz`) junto com
+  o resto; o `restore.sh` reimporta.
+- Em dev: `REMARK_SITE_ID=pronto-falei` no `.env` e
+  `COMPOSE_PROFILES=mock,comentarios docker compose up -d --build --wait`.
 
 ## Rodando local
 

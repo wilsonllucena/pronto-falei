@@ -12,6 +12,7 @@ import { QuickSummary } from '@/components/post/QuickSummary'
 import { Related } from '@/components/post/Related'
 import { SeriesNav } from '@/components/post/SeriesNav'
 import { TocMobile, TocSide } from '@/components/post/Toc'
+import { Comments } from '@/components/site/Comments'
 import { blogPostingJsonLd, jsonLdString, postMdPath } from '@/lib/machine'
 import { redirectOrNotFound } from '@/lib/notFound'
 import { absoluteUrl, withHeadingAnchors } from '@/lib/post'
@@ -23,6 +24,7 @@ import {
   getSiteInfo,
   toMachinePost,
 } from '@/lib/queries'
+import { remarkSiteId } from '@/lib/remark'
 import { seoDescription } from '@/lib/seo'
 import { toPostCard } from '@/lib/site'
 import type { Media, Post } from '@/payload-types'
@@ -99,6 +101,7 @@ export default async function PostPage({ params, searchParams }: Props) {
     preview ? Promise.resolve(null) : getPostSeries(post.slug),
     getSiteInfo(),
   ])
+  const commentsSite = remarkSiteId()
   const jsonLd = preview ? null : jsonLdString(blogPostingJsonLd(toMachinePost(post), site))
 
   return (
@@ -133,6 +136,13 @@ export default async function PostPage({ params, searchParams }: Props) {
       </div>
       <div className="container">
         <SeriesNav series={series} />
+        {commentsSite && !preview && (
+          <Comments
+            siteId={commentsSite}
+            url={absoluteUrl(`/posts/${post.slug}`)}
+            title={post.title}
+          />
+        )}
         <Related posts={related} />
       </div>
     </article>

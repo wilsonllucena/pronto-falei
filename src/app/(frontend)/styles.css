@@ -2276,3 +2276,28 @@ a.meta__cat:hover {
 .not-found__tags {
   margin-top: 36px;
 }
+
+/* Comentários (Remark42, passo 12) */
+.comments {
+  max-width: var(--column);
+  margin: clamp(48px, 8vw, 72px) auto 0;
+  padding-top: 28px;
+  border-top: 1px solid var(--c-border);
+}
+
+.comments__title {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.comments__note,
+.comments__loading {
+  margin-top: 8px;
+  color: var(--c-muted, inherit);
+  font-size: 15px;
+}
+
+.comments #remark42 {
+  margin-top: 16px;
+  min-height: 120px;
+}

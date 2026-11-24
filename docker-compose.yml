@@ -38,6 +38,10 @@ services:
       UMAMI_WEBSITE_ID: ${UMAMI_WEBSITE_ID:-}
       UMAMI_DOMAINS: ${UMAMI_DOMAINS:-}
       UMAMI_RESPECT_DNT: ${UMAMI_RESPECT_DNT:-true}
+      # Comentários (perfil comentarios): sem REMARK_SITE_ID o widget não aparece.
+      REMARK_INTERNAL_URL: ${REMARK_INTERNAL_URL:-http://remark42:8080}
+      REMARK_SITE_ID: ${REMARK_SITE_ID:-}
+      REMARK_ADMIN_PASSWD: ${REMARK_ADMIN_PASSWD:-remark-dev-admin}
       TZ: ${TZ:-America/Sao_Paulo}
     networks: [default, internal]
     depends_on:
@@ -199,6 +203,43 @@ services:
     networks: [internal, default]
     restart: unless-stopped
 
+  # ---------- Comentários (perfil comentarios): Remark42 em /comentarios pelo app ----------
+  remark42:
+    profiles: [comentarios]
+    image: umputun/remark42:v1.18.0
+    environment:
+      REMARK_URL: ${NEXT_PUBLIC_SERVER_URL:-http://localhost:3130}/comentarios
+      SECRET: ${REMARK_SECRET:-remark-dev-secret}
+      SITE: ${REMARK_SITE_ID:-pronto-falei}
+      ADMIN_PASSWD: ${REMARK_ADMIN_PASSWD:-remark-dev-admin}
+      # Só comentário anônimo (nome, sem cadastro); sem OAuth nem e-mail.
+      AUTH_ANON: 'true'
+      # O app é o único proxy (rede interna); ele manda o IP real do visitante.
+      TRUSTED_PROXY: 172.16.0.0/12,10.0.0.0/8,192.168.0.0/16
+      # Anti-spam básico: tamanho, limite de envio, palavras e nomes proibidos.
+      MIN_COMMENT_SIZE: '3'
+      MAX_COMMENT_SIZE: '2000'
+      UPDATE_LIMIT: '0.2'
+      VOTES_IP: 'true'
+      # Anti-spam: palavras proibidas (comentário recusado), nomes reservados,
+      # limite de envio por IP (UPDATE_LIMIT/s) e tamanho mínimo/máximo.
+      RESTRICTED_WORDS: ${REMARK_RESTRICTED_WORDS:-casino,cassino,viagra,cialis,porn,porno,xxx,escort,bet365,forex,airdrop}
+      RESTRICTED_NAMES: ${REMARK_RESTRICTED_NAMES:-admin,administrador,moderador,Wilson,Wilson Lima,wilsonlima,Pronto Falei}
+      IMAGE_MAX_SIZE: '1000000'
+      EDIT_TIME: 10m
+      EMOJI: 'true'
+      DISABLE_SIGNATURE: 'true'
+      MAX_BACKUP_FILES: '7'
+      TIME_ZONE: America/Sao_Paulo
+    volumes: [remark42-data:/srv/var]
+    healthcheck:
+      test: ['CMD', 'curl', '-fs', 'http://127.0.0.1:8080/ping']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [internal]
+    restart: unless-stopped
+
 networks:
   default: {}
   internal: { internal: true }
@@ -208,3 +249,4 @@ volumes:
   minio-data: {}
   llm-models: {}
   pg-data: {}
+  remark42-data: {}

@@ -18,6 +18,8 @@ complete_env() {
   add PG_PASSWORD "$(hex 24)"
   add UMAMI_DB_PASSWORD "$(hex 24)"
   add UMAMI_APP_SECRET "$(hex 32)"
+  add REMARK_SECRET "$(hex 32)"
+  add REMARK_ADMIN_PASSWD "$(hex 24)"
   chmod 600 "$OUT"
   if [ "${#added[@]}" -gt 0 ]; then echo "gen-prod-env: acrescentei ${added[*]}"; fi
 }
