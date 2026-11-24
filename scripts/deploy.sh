@@ -31,7 +31,8 @@ chmod 700 . && mkdir -p secrets && chmod 700 secrets
 dc() { docker compose -f docker-compose.prod.yml --env-file ../.env "$@"; }
 if [ -d src ] && (cd src && dc ps --status running -q backup 2>/dev/null | grep -q .); then
   echo "deploy: backup antes de trocar a versão"
-  (cd src && dc exec -T backup backup.sh)
+  # </dev/null: sem isso o exec consome o resto deste script (que vem pelo stdin)
+  (cd src && dc exec -T backup backup.sh </dev/null)
 fi
 rm -rf src.prev
 [ -d src ] && mv src src.prev
