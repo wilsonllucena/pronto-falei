@@ -204,3 +204,15 @@ export const SAMPLE_POSTS: Sample[] = [
     ],
   },
 ]
+
+/** Série de exemplo do seed (dev): ordem de leitura, não de data. */
+export const SAMPLE_SERIES = {
+  title: 'Homelab do zero',
+  slug: 'homelab-do-zero',
+  description: 'Do mini PC ao blog no ar: stack, backup e IA local, sem nuvem.',
+  posts: [
+    'payload-cms-mongodb-minio-docker',
+    'diario-de-bordo-backup-que-funciona',
+    'ia-local-no-homelab-sem-gpu',
+  ],
+}

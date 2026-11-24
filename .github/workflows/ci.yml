@@ -79,7 +79,7 @@ jobs:
           COMPOSE_PROFILES: mock
         run: docker compose up -d --build --wait
 
-      - name: Smoke test — Playwright (site, post, preview, busca, páginas, leitura por IA, síntese com IA mockada, /api/health, admin, mídia)
+      - name: Smoke test — Playwright (site, post, preview, busca, páginas, leitura por IA, síntese com IA mockada, séries, /api/health, admin, mídia)
         env:
           E2E_LLM: mock
         run: |

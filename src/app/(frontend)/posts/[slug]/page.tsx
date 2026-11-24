@@ -10,6 +10,7 @@ import { PostBody } from '@/components/post/PostBody'
 import { PostHeader } from '@/components/post/PostHeader'
 import { QuickSummary } from '@/components/post/QuickSummary'
 import { Related } from '@/components/post/Related'
+import { SeriesNav } from '@/components/post/SeriesNav'
 import { TocMobile, TocSide } from '@/components/post/Toc'
 import { blogPostingJsonLd, jsonLdString, postMdPath } from '@/lib/machine'
 import { redirectOrNotFound } from '@/lib/notFound'
@@ -17,6 +18,7 @@ import { absoluteUrl, withHeadingAnchors } from '@/lib/post'
 import {
   getDraftPost,
   getPublishedPost,
+  getPostSeries,
   getRelatedPosts,
   getSiteInfo,
   toMachinePost,
@@ -92,8 +94,9 @@ export default async function PostPage({ params, searchParams }: Props) {
   const card = toPostCard(post)
   const coverMedia = typeof post.cover === 'object' ? (post.cover as Media | null) : null
   const { content, toc } = withHeadingAnchors(post.content)
-  const [related, site] = await Promise.all([
+  const [related, series, site] = await Promise.all([
     preview ? Promise.resolve([]) : getRelatedPosts(post.slug),
+    preview ? Promise.resolve(null) : getPostSeries(post.slug),
     getSiteInfo(),
   ])
   const jsonLd = preview ? null : jsonLdString(blogPostingJsonLd(toMachinePost(post), site))
@@ -129,6 +132,7 @@ export default async function PostPage({ params, searchParams }: Props) {
         )}
       </div>
       <div className="container">
+        <SeriesNav series={series} />
         <Related posts={related} />
       </div>
     </article>

@@ -3,11 +3,12 @@ import config from '@payload-config'
 import { getPayload, type Where } from 'payload'
 import { cache } from 'react'
 
-import type { Post } from '../payload-types'
+import type { Post, Series } from '../payload-types'
 import { cached } from './cache'
 import { CACHE_TAGS } from './cacheTags'
 import type { MachinePage, MachinePost, SiteInfo, SitemapEntry } from './machine'
 import { pickRelated, siteUrl } from './post'
+import { buildSeriesNav, type SeriesNav } from './series'
 import { normalizePath, redirectTarget, type RedirectDoc } from './redirects'
 import {
   accentInsensitivePattern,
@@ -197,27 +198,61 @@ export async function getDraftPost(slugOrId: string): Promise<Post | null> {
   }
 }
 
-/** "Leia também": override manual ou até 3 posts com mais tags em comum. */
+/**
+ * "Leia também": override manual ou até 3 posts por tags em comum e categoria,
+ * sem repetir as partes da série do post (que já aparecem na caixa da série).
+ */
 export const getRelatedPosts = cached(
   async (slug: string): Promise<PostCard[]> => {
     const post = await getPublishedPost(slug)
     if (!post) return []
     const ids = (post.tags ?? []).map((t) => (typeof t === 'string' ? t : t.id))
+    const category = post.category
+      ? typeof post.category === 'string'
+        ? post.category
+        : post.category.id
+      : null
+    const match: Where[] = []
+    if (ids.length) match.push({ tags: { in: ids } })
+    if (category) match.push({ category: { equals: category } })
     let candidates: Post[] = []
-    if (ids.length) {
+    if (match.length) {
       const payload = await payloadClient()
       const res = await payload.find({
         collection: 'posts',
-        where: { and: [published, { tags: { in: ids } }, { id: { not_equals: post.id } }] },
+        where: { and: [published, { or: match }, { id: { not_equals: post.id } }] },
         sort: '-publishedAt',
         limit: 30,
         depth: 1,
       })
-      candidates = res.docs as Post[]
+      const series = await getPostSeries(slug)
+      const inSeries = new Set(series?.parts.map((p) => p.id))
+      candidates = (res.docs as Post[]).filter((p) => !inSeries.has(p.id))
     }
     return pickRelated(post, candidates, 3).map(toPostCard)
   },
   'related',
+  (slug) => [CACHE_TAGS.posts, CACHE_TAGS.post(slug)],
+)
+
+/** Série do post (Parte N de M, anterior/próximo), só com partes publicadas. */
+export const getPostSeries = cached(
+  async (slug: string): Promise<SeriesNav | null> => {
+    const post = await getPublishedPost(slug)
+    if (!post) return null
+    const payload = await payloadClient()
+    const res = await payload.find({
+      collection: 'series',
+      where: { posts: { in: [post.id] } },
+      sort: 'createdAt',
+      limit: 1,
+      depth: 1,
+      populate: { posts: { title: true, slug: true, _status: true } },
+    })
+    const series = res.docs[0] as Series | undefined
+    return series ? buildSeriesNav(series, post.id) : null
+  },
+  'series',
   (slug) => [CACHE_TAGS.posts, CACHE_TAGS.post(slug)],
 )
 

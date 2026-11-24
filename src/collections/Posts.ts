@@ -203,7 +203,8 @@ export const Posts: CollectionConfig = {
               hasMany: true,
               filterOptions: ({ id }) => (id ? { id: { not_in: [id] } } : true),
               admin: {
-                description: 'Se vazio, o site escolhe por tags em comum.',
+                description:
+                  'Se vazio, o site escolhe pelos posts com mais tags em comum e, depois, da mesma categoria.',
               },
             },
           ],

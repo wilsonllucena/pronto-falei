@@ -2,7 +2,7 @@ import type { Payload } from 'payload'
 
 import { lexicalFromBlocks } from '../lib/lexicalBuilder'
 import { COVERS, renderCover } from './covers'
-import { SAMPLE_POSTS } from './samplePosts'
+import { SAMPLE_POSTS, SAMPLE_SERIES } from './samplePosts'
 
 /**
  * Seed SÓ de desenvolvimento. Recusa rodar em produção ou contra um banco
@@ -157,6 +157,33 @@ export async function seed(payload: Payload): Promise<{ created: string[] }> {
         summarySource: 'manual',
       }),
     )
+  }
+
+  // Série de exemplo: a ordem de leitura é a da lista, não a data.
+  const existingSeries = await payload.find({
+    collection: 'series',
+    where: { slug: { equals: SAMPLE_SERIES.slug } },
+    limit: 1,
+    depth: 0,
+  })
+  if (!existingSeries.docs[0]) {
+    const parts = await payload.find({
+      collection: 'posts',
+      where: { slug: { in: SAMPLE_SERIES.posts } },
+      limit: SAMPLE_SERIES.posts.length,
+      depth: 0,
+    })
+    const bySlug = new Map(parts.docs.map((d) => [d.slug, String(d.id)]))
+    await payload.create({
+      collection: 'series',
+      data: {
+        title: SAMPLE_SERIES.title,
+        slug: SAMPLE_SERIES.slug,
+        description: SAMPLE_SERIES.description,
+        posts: SAMPLE_SERIES.posts.map((s) => bySlug.get(s)).filter((id): id is string => !!id),
+      },
+    })
+    created.push(`série ${SAMPLE_SERIES.slug}`)
   }
 
   // Redirecionamento de exemplo (URL antiga do post de boas-vindas).

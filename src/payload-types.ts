@@ -68,6 +68,7 @@ export interface Config {
   blocks: {};
   collections: {
     posts: Post;
+    series: Series;
     pages: Page;
     media: Media;
     tags: Tag;
@@ -84,6 +85,7 @@ export interface Config {
   collectionsJoins: {};
   collectionsSelect: {
     posts: PostsSelect<false> | PostsSelect<true>;
+    series: SeriesSelect<false> | SeriesSelect<true>;
     pages: PagesSelect<false> | PagesSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     tags: TagsSelect<false> | TagsSelect<true>;
@@ -187,7 +189,7 @@ export interface Post {
   summaryModel?: string | null;
   summaryGeneratedAt?: string | null;
   /**
-   * Se vazio, o site escolhe por tags em comum.
+   * Se vazio, o site escolhe pelos posts com mais tags em comum e, depois, da mesma categoria.
    */
   relatedPosts?: (string | Post)[] | null;
   meta?: {
@@ -311,6 +313,28 @@ export interface Tag {
   generateSlug?: boolean | null;
   slug: string;
   description?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Posts lidos em sequência. No post aparece "Parte N de M" com anterior e próximo.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "series".
+ */
+export interface Series {
+  id: string;
+  title: string;
+  /**
+   * When enabled, the slug will auto-generate from the title field on save and autosave.
+   */
+  generateSlug?: boolean | null;
+  slug: string;
+  description?: string | null;
+  /**
+   * Arraste pra mudar a ordem. Rascunhos ficam de fora no site até serem publicados. Se um post estiver em mais de uma série, vale a criada primeiro.
+   */
+  posts: (string | Post)[];
   updatedAt: string;
   createdAt: string;
 }
@@ -557,6 +581,10 @@ export interface PayloadLockedDocument {
         value: string | Post;
       } | null)
     | ({
+        relationTo: 'series';
+        value: string | Series;
+      } | null)
+    | ({
         relationTo: 'pages';
         value: string | Page;
       } | null)
@@ -665,6 +693,19 @@ export interface PostsSelect<T extends boolean = true> {
   updatedAt?: T;
   createdAt?: T;
   _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "series_select".
+ */
+export interface SeriesSelect<T extends boolean = true> {
+  title?: T;
+  generateSlug?: T;
+  slug?: T;
+  description?: T;
+  posts?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

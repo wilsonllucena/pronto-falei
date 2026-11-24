@@ -10,6 +10,7 @@ import sharp from 'sharp'
 import { fileURLToPath } from 'url'
 
 import { Categories } from './collections/Categories'
+import { Series } from './collections/Series'
 import { Media } from './collections/Media'
 import { Pages } from './collections/Pages'
 import { Posts } from './collections/Posts'
@@ -44,7 +45,7 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
-  collections: [Posts, Pages, Media, Tags, Categories, Users],
+  collections: [Posts, Series, Pages, Media, Tags, Categories, Users],
   globals: [SiteSettings, Navigation],
   editor: contentEditor,
   // Blog só em pt-BR: o admin também.

@@ -5,7 +5,8 @@ inovação e inteligência artificial, sem rodeios.
 
 > **Status:** passos 1 (esqueleto), 2 (collections e admin), 3 (MinIO), 4
 > (design e layout), 5 (página do post), 6 (navegação e páginas), 7 (leitura
-> por IA: .md, llms.txt, JSON-LD, feeds) e 8 (síntese com IA local) prontos.
+> por IA: .md, llms.txt, JSON-LD, feeds), 8 (síntese com IA local) e 9 (séries
+> e relacionados) prontos.
 > Ainda não tem deploy — isso vem nos próximos passos.
 
 ## Stack
@@ -212,6 +213,19 @@ COMPOSE_PROFILES=ia docker compose up -d --wait   # app + IA real (1º start bai
 COMPOSE_PROFILES=mock docker compose up -d --wait # app + mock da IA (CI/testes)
 ```
 
+## Séries e relacionados (passo 9)
+
+- **Séries** (_Conteúdo › Séries_): título, slug, descrição e a lista de posts
+  na ordem de leitura (arraste pra reordenar; mínimo 2). No post aparece a
+  caixa "Parte N de M da série X" com todas as partes, a atual destacada, e
+  os links ‹ Anterior / Próxima › (`rel="prev"`/`"next"`). Rascunhos não
+  contam até serem publicados. Se um post estiver em mais de uma série, vale a
+  criada primeiro.
+- **Leia também**: o override manual do post vence; sem ele, até 3 posts
+  pontuados por tags em comum (2 pontos cada) + mesma categoria (1 ponto), os
+  mais novos no empate. As partes da série do post não se repetem ali.
+- Salvar ou apagar uma série invalida o cache dos posts na hora.
+
 ## Rodando local
 
 Pré-requisitos: Node 24.22.3+, pnpm 10 e Docker com Compose v2.
@@ -301,6 +315,6 @@ baixar modelo. Os prints do smoke ficam como artefato do workflow.
 
 ## Próximos passos (resumo do plano)
 
-9. Séries e relacionados
-10. Docker de produção e deploy no homelab · 11–13. Umami, Remark42, Listmonk
-11. Publicação (domínio), com aprovação
+- 10: Docker de produção e deploy no homelab
+- 11–13: Umami, Remark42, Listmonk
+- 14: Publicação (domínio), com aprovação

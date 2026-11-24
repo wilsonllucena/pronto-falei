@@ -47,13 +47,16 @@ export function withHeadingAnchors<T>(content: T): { content: T; toc: TocItem[] 
 const tagIds = (p: Pick<Post, 'tags'>): string[] =>
   (p.tags ?? []).map((t) => (typeof t === 'string' ? t : (t as Tag).id))
 
+const categoryId = (p: Pick<Post, 'category'>): string | null =>
+  p.category ? (typeof p.category === 'string' ? p.category : p.category.id) : null
+
 /**
  * Posts relacionados: o override manual vem primeiro (só os publicados);
- * se faltar, completa com os que têm mais tags em comum e, no empate, os
- * mais novos.
+ * se faltar, os que têm mais tags em comum (cada tag vale 2) somando 1 se for
+ * da mesma categoria; no empate, os mais novos.
  */
 export function pickRelated(
-  current: Pick<Post, 'id' | 'tags' | 'relatedPosts'>,
+  current: Pick<Post, 'id' | 'tags' | 'relatedPosts' | 'category'>,
   candidates: Post[],
   limit = 3,
 ): Post[] {
@@ -63,9 +66,15 @@ export function pickRelated(
   const chosen = manual.filter((p) => p.id !== current.id).slice(0, limit)
   if (manual.length > 0) return chosen
   const mine = new Set(tagIds(current))
+  const myCategory = categoryId(current)
   const scored = candidates
     .filter((p) => p.id !== current.id && p._status !== 'draft')
-    .map((p) => ({ p, score: tagIds(p).filter((id) => mine.has(id)).length }))
+    .map((p) => ({
+      p,
+      score:
+        tagIds(p).filter((id) => mine.has(id)).length * 2 +
+        (myCategory && categoryId(p) === myCategory ? 1 : 0),
+    }))
     .filter((s) => s.score > 0)
     .sort(
       (a, b) =>
